@@ -1,13 +1,14 @@
 {
   "private": true,
   "name": "eb_dsl",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Punto Origen - ES6 EB DSL Class Parser",
   "keywords": [
     "creador",
     "puntorigen",
     "concepto",
-    "dsl"
+    "dsl",
+    "elasticbean"
   ],
   "license": "AGPL-3.0-or-later",
   "author": "Pablo Schaffner",
@@ -26,19 +27,37 @@
     "dev": "cross-env NODE_ENV=development rollup -c",
     "build": "cross-env NODE_ENV=production rollup -c && npm run docs",
     "docs": "jsdoc2md -t README.hbs src/*.js > README.md",
-    "test_dsl": "npm run dev && node test/pablo.js test/spotify_api/eb.dsl",
-    "test_dslb": "npm run dev && node test/pablo.js test/backend/eb.dsl"
+    "test_dsl": "npm run dev && node test/pablo.js test/backend/eb.dsl"
   },
   "dependencies": {
+    "asciify-image": "^0.1.6",
+    "await-spawn": "^4.0.2",
+    "cfonts": "^2.9.1",
+    "cheerio": "*",
+    "ci-info": "^3.1.1",
     "concepto": "github:puntorigen4u/concepto",
+    "crypto-hash": "^1.3.0",
     "dsl_parser": "github:puntorigen4u/dsl_parser",
-    "highwayhash": "^3.0.0",
+    "extractjs": "^0.3.1",
+    "fast-case": "^1.6.0",
     "ini": "^1.3.5",
     "is-port-reachable": "^3.0.0",
+    "js-beautify": "^1.13.5",
+    "jss": "^10.6.0",
+    "jss-plugin-global": "^10.6.0",
     "lorem-ipsum": "^2.0.3",
+    "minimatch": "^3.0.4",
+    "node-fetch": "^2.6.1",
+    "node-persist": "^3.1.0",
     "open_console": "github:puntorigen4u/console",
+    "open-terminal": "^0.1.11",
+    "ora": "^5.4.0",
+    "prettier": "^2.2.1",
     "recursive-copy": "^2.0.10",
-    "safe-eval": "^0.4.1"
+    "safe-eval": "^0.4.1",
+    "terminal-tab": "^0.0.7",
+    "url-record": "^1.0.1",
+    "yaml": "^1.10.2"
   },
   "devDependencies": {
     "@ampproject/rollup-plugin-closure-compiler": "^0.26.0",
@@ -47,8 +66,9 @@
     "@rollup/plugin-babel": "^5.2.0",
     "@rollup/plugin-node-resolve": "^8.4.0",
     "cross-env": "^7.0.2",
-    "jsdoc-to-markdown": "^6.0.1",
-    "rollup": "^2.26.5"
+    "jsdoc-to-markdown": "^7.0.1",
+    "rollup": "^2.26.5",
+    "rollup-plugin-copy-assets": "^2.0.3"
   },
   "scarfSettings": {
     "enabled": false
