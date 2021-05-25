@@ -24,7 +24,8 @@ export default class base_deploy {
         let spinner = this.context.x_console.spinner({ message:`Deploying ${this.name} instance` });
         return errors;
     }
-
+    
+    // building methods
     async base_build() {
         // builds the project
         let spawn = require('await-spawn'), path = require('path'), fs = require('fs').promises;
@@ -92,6 +93,11 @@ export default class base_deploy {
     async pre() {
     }
     async post() {
+    }
+
+    // config hooks
+    async setEnvs(envs) {
+        return envs; //array with already set env vars
     }
 
     // HELPER methods

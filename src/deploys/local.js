@@ -12,6 +12,10 @@ export default class local extends base_deploy {
         super({ context, name:'Local' });
     }
 
+    async setEnvs(envs) {
+        return [...envs,'START_TYPE=development'];
+    }
+
     async deploy() {
         let build={};
         if ((await this._isLocalServerRunning())==false) {
