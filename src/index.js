@@ -445,6 +445,7 @@ ${this.x_state.dirs.compile_folder}/secrets/`;
 
     // create /README.md file
     async createReadme() {
+        let fs = require('fs').promises;
         if (this.x_state.central_config.readme!='') {        
             let set_envs = [];
             for (let key in this.x_state.config_node) {
@@ -468,6 +469,7 @@ ${this.x_state.dirs.compile_folder}/secrets/`;
     }
 
     async createErrorTemplate() {
+        let fs = require('fs').promises;
         let content = `<h1><%= message %></h1>
         <h2><%= error.status %></h2>
         <pre><%= error.stack %></pre>`;
@@ -816,6 +818,8 @@ function onListening() {
         //write .npmrc file for ffmpeg support
         this.writeFile(path.join(this.x_state.dirs.app,'.npmrc'),`unsafe-perm=true`);
         this.debug('processing nodes');
+        console.log('PABLO debug x_state',this.x_state);
+        //console.log('PABLO debug create nodes',processedNodes);
         //group functions into express models (first folder is dad model)
         /*
         for (let thefile_num in processedNodes)  {
