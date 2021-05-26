@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "eb_dsl",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Punto Origen - ES6 EB DSL Class Parser",
   "keywords": [
     "creador",
@@ -30,6 +30,7 @@
     "test_dsl": "npm run dev && node test/pablo.js test/backend/eb.dsl"
   },
   "dependencies": {
+    "anzip": "^0.2.0",
     "asciify-image": "^0.1.6",
     "await-spawn": "^4.0.2",
     "cfonts": "^2.9.1",

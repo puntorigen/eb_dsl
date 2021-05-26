@@ -259,168 +259,6 @@ export default class eb_dsl extends concepto {
         this.errors_found=true;
     }
 
-    //configNode helper
-    async generalConfigSetup() {
-        //this.x_state.dirs.base
-        this.debug('Setting general configuration steps');
-        this.debug('Defining nuxt.config.js : initializing');
-        // default modules
-        this.debug('Defining nuxt.config.js : default modules');
-        this.x_state.nuxt_config.modules['@nuxtjs/axios'] = {};
-        //google analytics
-        if (this.x_state.config_node['google:analytics']) {
-            this.debug('Defining nuxt.config.js : Google Analytics');
-            this.x_state.nuxt_config.build_modules['@nuxtjs/google-gtag'] = {
-                'id': this.x_state.config_node['google:analytics'].id,
-                'debug': true,
-                'disableAutoPageTrack': true
-            };
-            if (this.x_state.config_node['google:analytics'].local) this.x_state.nuxt_config.build_modules['@nuxtjs/google-gtag'].debug = this.x_state.config_node['google:analytics'].local;
-            if (this.x_state.config_node['google:analytics'].auto && this.x_state.config_node['google:analytics'].auto == true) {
-                delete this.x_state.nuxt_config.build_modules['@nuxtjs/google-gtag']['disableAutoPageTrack'];
-            }
-        }
-        //medianet
-        if (this.x_state.config_node['ads:medianet'] && this.x_state.config_node['ads:medianet']['cid']) {
-            this.debug('Defining nuxt.config.js : MediaNet');
-            this.x_state.nuxt_config.head_script['z_ads_medianet_a'] = {
-                'innerHTML': 'window._mNHandle = window._mNHandle || {}; window._mNHandle.queue = window._mNHandle.queue || []; medianet_versionId = "3121199";',
-                'type': 'text/javascript'
-            };
-            this.x_state.nuxt_config.head_script['z_ads_medianet_b'] = {
-                'src': `https://contextual.media.net/dmedianet.js?cid=${this.x_state.config_node['ads:medianet'][cid]}`,
-                'async': true
-            };
-            this.x_state.plugins['vue-script2'] = {
-                global: true,
-                npm: { 'vue-script2': '*' }
-            };
-        }
-        //google Adsense
-        if (this.x_state.config_node['google:adsense']) {
-            this.debug('Defining nuxt.config.js : Google Adsense');
-            if (this.x_state.config_node['google:adsense'].auto && this.x_state.config_node['google:adsense'].client) {
-                this.x_state.nuxt_config.head_script['google_adsense'] = {
-                    'src': 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js',
-                    'data-ad-client': this.x_state.config_node['google:adsense'].client,
-                    'async': true
-                };
-                this.x_state.plugins['adsense'] = {
-                    global: true,
-                    npm: {
-                        'vue-google-adsense': '*',
-                        'vue-script2': '*'
-                    },
-                    mode: 'client',
-                    customcode: `
-					import Vue from "vue";
-					import Ads from "vue-google-adsense";
-
-					Vue.use(require('vue-script2'));
-					Vue.use(Ads.AutoAdsense, { adClient: '${this.x_state.config_node['google:adsense']['client']}'});`
-                };
-            } else {
-                this.x_state.plugins['adsense'] = {
-                    global: true,
-                    npm: {
-                        'vue-google-adsense': '*',
-                        'vue-script2': '*'
-                    },
-                    mode: 'client',
-                    customcode: `
-					import Vue from "vue";
-					import Ads from "vue-google-adsense";
-
-					Vue.use(require('vue-script2'));
-					Vue.use(Ads.Adsense);
-					Vue.use(Ads.InArticleAdsense);
-					Vue.use(Ads.InFeedAdsense);`
-                };
-            }
-        }
-        //nuxt:icon
-        if (this.x_state.config_node['nuxt:icon']) {
-            this.debug('Defining nuxt.config.js : module nuxtjs/pwa (nuxt:icon)');
-            this.x_state.nuxt_config.modules['@nuxtjs/pwa'] = {};
-        }
-        //idiomas i18n
-        if (this.x_state.central_config['idiomas'].indexOf(',') != -1) {
-            this.debug('Defining nuxt.config.js : module nuxt/i18n (idiomas)');
-            this.x_state.npm['nuxt-i18n'] = '*';
-            this.x_state.npm['fs'] = '*';
-            this.x_state.nuxt_config.modules['nuxt-i18n'] = {
-                'defaultLocale': this.x_state.central_config['idiomas'].split(',')[0],
-                'vueI18n': { 'fallbackLocale': this.x_state.central_config['idiomas'].split(',')[0] },
-                'detectBrowserLanguage': {
-                    'useCookie': true,
-                    'alwaysRedirect': true
-                },
-                locales: [],
-                lazy: true,
-                langDir: 'lang/'
-            };
-            let self = this;
-            this.x_state.central_config['idiomas'].split(',').map(function(lang) {
-                if (lang == 'es') {
-                    self.x_state.nuxt_config.modules['nuxt-i18n'].locales.push({
-                        code: 'es',
-                        iso: 'es-ES',
-                        file: `${lang}.js`
-                    });
-                } else if (lang == 'en') {
-                    self.x_state.nuxt_config.modules['nuxt-i18n'].locales.push({
-                        code: 'en',
-                        iso: 'en-US',
-                        file: `${lang}.js`
-                    });
-                } else {
-                    self.x_state.nuxt_config.modules['nuxt-i18n'].locales.push({
-                        code: lang,
-                        file: `${lang}.js`
-                    });
-                }
-            }.bind(self));
-        }
-        //local storage
-        if (this.x_state.stores_types['local'] && Object.keys(this.x_state.stores_types['local']) != '') {
-            this.debug('Defining nuxt.config.js : module nuxt-vuex-localstorage (store:local)');
-            this.x_state.nuxt_config.modules['nuxt-vuex-localstorage'] = {
-                mode: 'debug',
-                'localStorage': Object.keys(this.x_state.stores_types['local'])
-            };
-        }
-        //session storage
-        if (this.x_state.stores_types['session'] && Object.keys(this.x_state.stores_types['session']) != '') {
-            this.debug('Defining nuxt.config.js : module nuxt-vuex-localstorage (store:session)');
-            let prev = {};
-            // if vuex-localstorage was defined before, recover keys and just replace with news, without deleting previous
-            if (this.x_state.nuxt_config.modules['nuxt-vuex-localstorage']) prev = this.x_state.nuxt_config.modules['nuxt-vuex-localstorage'];
-            this.x_state.nuxt_config.modules['nuxt-vuex-localstorage'] = {...prev,
-                ... {
-                    mode: 'debug',
-                    'sessionStorage': Object.keys(this.x_state.stores_types['session'])
-                }
-            };
-        }
-        //proxies
-        let has_proxies = false,
-            proxies = {};
-        let self = this;
-        Object.keys(this.x_state.central_config).map(function(key) {
-            if (key.indexOf('proxy:') != -1) {
-                let just_key = key.split(':')[1];
-                proxies[just_key] = self.x_state.central_config[key];
-                has_proxies = true;
-            }
-        }.bind(self));
-        if (has_proxies) {
-            this.debug('Defining nuxt.config.js : module nuxtjs/proxy (central:proxy)');
-            this.x_state.npm['@nuxtjs/proxy'] = '*';
-            this.x_state.nuxt_config.modules['@nuxtjs/proxy'] = { 'proxy': proxies };
-        }
-        //end
-    }
-
     //.gitignore helper
     async createGitIgnore() {
         this.debug('writing .gitignore files');
@@ -744,6 +582,351 @@ function onListening() {
         }
     }
 
+    async getExpressModels() {
+        let sort = function(obj) {
+            return Object.entries(obj).sort((a,b)=>a[0].length-b[0].length).map(el=>el[0]);
+        };
+        let express_models = {}; // grouped functions by main path folder
+        let routes = { raw:{}, ordered:[] };
+        for (let key in this.x_state.functions) {
+            let file = key.split('_')[0];
+            if (!express_models[file]) {
+                express_models[file] = {
+                    functions:{},
+                    ordered_functions:[],
+                    imports:{},
+                    route:file,
+                    model:file,
+                    path:`/${file}/`,
+                };
+            }
+            if (!express_models[file].functions[key]) {
+                express_models[file].functions[key]=this.x_state.functions[key];
+            }
+            express_models[file].ordered_functions = sort(express_models[file].functions);
+            // merge function's imports into dad (e_model) imports
+            for (let import_name in this.x_state.functions[key].imports) {
+                express_models[file].imports[import_name] = import_name;
+            }
+            // add pathlen key for later struct sort
+            express_models[file].functions[key].pathlen = this.x_state.functions[key].path.length;
+            if (express_models[file].functions[key].visible==true) {
+                routes.raw[`/${file}/`] = file;
+            }
+        }
+        routes.ordered = sort(routes.raw);
+        let resp = { models:express_models, routes };
+        return resp;
+    }
+
+    async createAppJS(express) {
+        let path = require('path');
+        // create app_routes code
+        let app_routes = [];
+        for (let route_x in express.routes.ordered) {
+            let route = express.routes.ordered[route_x];
+            app_routes.push(`app.use('${route}', require('./routes/${express.routes.raw[route]}'));`);
+        }
+        // content
+        let content = `var express = require('express');\n`;
+        if (this.x_state.central_config.rtc && this.x_state.central_config.rtc==true) {
+            content += `var http = require('http'), socket = require('socket.io'), rtc = require('rtcmulticonnection-server');\n`;
+        }
+        content += `var cors = require('cors'),
+                    session = require('express-session'),
+                    path = require('path'),
+                    favicon = require('serve-favicon'),
+                    logger = require('morgan'),
+                    cookieParser = require('cookie-parser'),
+                    bodyParser = require('body-parser'),
+                    // NodeGeocoder: es utilizado para realizar la geo decodificacion y codificacion de lat-lon o direccion.
+                    //NodeGeocoder = require('node-geocoder'),
+                    // Mysql: es la instancia de mysql global.
+                    mysql = require('mysql2'),
+                    helmet = require('helmet'),
+                    // Cluster: es para realizar un cluster de servidor conectados por express.
+                    cluster = require('express-cluster'),
+                    // schedule: es usado para crear crons.
+                    schedule = require('node-schedule'),
+                    // Request: es utilizado para realizar las llamadas get y post hacia otros servicios o servicios internos.
+                    request = require('request'),
+                    wait = require('wait.for'),
+                    compress = require('compression')();
+                // Define en las variables del enviroment el TimeZone a utc.
+                process.env.TZ = 'utc';
+                
+                cluster(function(worker) {
+                var app = express();
+                var port = process.env.APP_PORT;
+        `;
+        if (this.x_state.central_config.rtc && this.x_state.central_config.rtc==true) {
+            content += `var httpServer = http.createServer(app);
+            var io = socket(httpServer).on('connection', function(sock) {\n`;
+            if (this.x_state.central_config['rtc:admin']!='') {
+                content += `rtc.addSocket(sock, {
+                    "socketURL": "/",
+                    "dirPath": "",
+                    "homePage": "/",
+                    "socketMessageEvent": "RTCMultiConnection-Message",
+                    "socketCustomEvent": "RTCMultiConnection-Custom-Message",
+                    "port": port,
+                    "enableLogs": false,
+                    "autoRebootServerOnFailure": false,
+                    "isUseHTTPs": false,
+                    "sslKey": "./fake-keys/privatekey.pem",
+                    "sslCert": "./fake-keys/certificate.pem",
+                    "sslCabundle": "",
+                    "enableAdmin": true,
+                    "adminUserName": "${this.x_state.central_config["rtc:admin"].split(',')[0].trim()}",
+                    "adminPassword": "${this.x_state.central_config["rtc:admin"].split(',').pop().trim()}"
+                  });\n`;
+            } else {
+                content += `rtc.addSocket(sock);\n`;
+            }
+            content += `});\n`;
+        }
+        //
+        content += `app.enable('trust proxy');
+        app.use(cors({ optionsSuccessStatus: 200 }));
+        app.options('*',cors());
+        app.use(compress);
+        app.use(helmet());
+        app.disable('x-powered-by');
+        app.use(session({
+          secret: 'c-r-34707$ee$$$10nBm_api',
+          resave: true,
+          saveUninitialized: true
+        }));
+        app.set('views', __dirname + '/views');
+        app.set('view engine', 'ejs');
+        //app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
+        app.use(logger('dev'));
+        app.use(bodyParser.urlencoded({ extended: false,limit: '2gb' }));
+        app.use(bodyParser.json({ extended: false,limit: '2gb' }));
+        app.use(cookieParser());
+        app.use(express.static(path.join(__dirname, 'public')));
+        app.use('/', require('./routes/index'));
+        ${app_routes.join('\n')}
+        // catch 404 and forward to error handler
+        app.use(function(req, res, next) {
+          var err = new Error('Not Found');
+          err.status = 404;
+          next(err);
+        });
+        // error handler
+        app.use(function(err, req, res, next) {
+          // set locals, only providing error in development
+          res.locals.message = err.message;
+          res.locals.error = process.env.START_TYPE === 'development' ? err : {};
+      
+          // render the error page
+          res.status(err.status || 500);
+          res.render('error');
+        });
+        process.env.UV_THREADPOOL_SIZE = 128;
+        // aqui van los schedules @TODO 1-6-19
+        // aqui creamos el servidor\n`;
+        if (this.x_state.central_config.rtc && this.x_state.central_config.rtc==true) {
+            content += `return httpServer.listen(port, function () {
+                            console.log(\`T: \${new Date().toLocaleString()} | EXPRESS (\${process.env.START_TYPE}): server listening on port \${port}\`);
+                            console.log(\`SERVIDOR INICIADO CON RTC\`);
+                        });\n`;
+        } else {
+            content += `return app.listen(port, function () {
+                            console.log(\`T: \${new Date().toLocaleString()} | EXPRESS (\${process.env.START_TYPE}): server listening on port \${port}\`);
+                            console.log(\`SERVIDOR INICIADO\`);
+                        });\n`;
+        }
+        content += `// Al final creamos el cluster del servidor.
+                    }, {count: process.env.CLUSTER});\n`;
+        //post-processing
+        
+        if (this.x_state.central_config.rtc && this.x_state.central_config.rtc==true) {
+            this.x_state.npm['http'] = '*';
+            this.x_state.npm = {...this.x_state.npm,...{
+                'http':'*',
+                'socket.io':'*',
+                'rtcmulticonnection-server':'*'
+            }};
+            if (this.x_state.central_config['rtc:admin']!='') {
+                //copy rtcadmin from assets and unzip into public dir
+                let anzip = require('anzip');
+                let rtc_admin = path.join(__dirname,'assets','rtc_admin.zip');
+                let output = await anzip(rtc_admin, { outputPath:this.x_state.dirs.public });
+                //console.log('PABLO debug unzip',output);
+            }            
+        }
+        //write file
+        let appjs = path.join(this.x_state.dirs.app,'app.js');
+        await this.writeFile(appjs,content);
+    }
+
+    async createIndex(express) {
+        let path = require('path');
+        // get path routes
+        let app_routes = [];
+        for (let route_x in express.routes.ordered) {
+            let route = express.routes.ordered[route_x];
+            if (route.charAt(0)=='/') route = route.right(route.length-1);
+            let no_slash = route.replaceAll('/','');
+            app_routes.push(`case '${no_slash}':
+                                res.redirect('/');
+                                break;
+                             case '${route}':
+                                res.redirect('/');
+                                break;
+                            `);
+        }
+        // create content
+        let content = `var express = require('express');
+        var router = express.Router();
+        var path = require('path');
+        // rutas por defecto para documentacion
+        router.get(['/*'], function(req, res, next) {
+            switch (req.url) {
+                case "/":
+                    res.send('OK');
+                break;
+                ${app_routes.join('\n')}
+                default:
+                    res.redirect('/');
+                break;
+            }
+        });
+        module.exports = router;\n`;
+        // write file
+        let target = path.join(this.x_state.dirs.routes,'index.js');
+        await this.writeFile(target,content);
+    }
+
+    async createRoutes(express) {
+        let listDeleteAt = function(list, position, delimiter) {
+            delimiter = (delimiter === undefined) ? "," : delimiter;
+            var arr = list.split(delimiter);
+            if (position >= 1 && position <= arr.length) {
+                arr.splice(position - 1, 1);
+                return arr.join(delimiter);
+            }
+            return list;
+        };
+        let cleanLinesDoc = function(text) {
+            //trim each line
+            let resp = '', lines = text.split('\n'), used=0;
+            for (let line in lines) {
+                let t_line = lines[line].trim();
+                if (t_line!='') {
+                    if (used!=0) resp += ' * ';
+                    resp += t_line + '\n';
+                    used+=1;
+                }
+            }
+            //if (resp.slice(-1)=='\n') resp = resp.substr(0,resp.length-1); // erase last \n
+            resp += ' * ';
+            return resp;
+            /*
+            var esc = '\n'.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+            var reg = new RegExp(esc, 'ig');
+            return text.replace(reg, '').trim().replaceAll('. ','.\n * ');
+            */
+        };
+        let ccase = require('fast-case'), path = require('path');
+        // create routes files from express models
+        for (let file in express.models) {
+            // get unique sub-routes
+            let unique = {};
+            for (let func of express.models[file].ordered_functions) {
+                let path = express.models[file].functions[func].path.trim().split('/');
+                path.pop(); //remove last item
+                path = path.join('/');
+                if (!unique[path] && path.includes('/')==true && path!='/'+file) {
+                    unique[path] = path.replaceAll('/','_');
+                    if (unique[path].charAt(0)=='_') unique[path]=unique[path].substr(1,unique[path].length-1);
+                }
+            }
+            // code
+            let content = `/**
+ * Servicios en ruta /${file}
+ * @namespace {object} ${file}
+ */
+var express = require('express'), wait = require('wait.for');
+var router = express.Router();
+var ${file} = require('../models/${file}');
+            `;
+            if (Object.keys(unique).length>0) content += `// declaracion de sub-rutas en esta ubicacion\n`;
+            for (let route in unique) {
+                content += `/**
+ * Servicios en ruta ${route}
+ * @namespace {object} ${unique[route]}
+ */\n`;
+            }
+            // write each function signature
+            for (let func of express.models[file].ordered_functions) {
+                // write jsdoc info for function
+                let _jsdoc = {
+                    method: express.models[file].functions[func].method.toLowerCase(),
+                    path_o: express.models[file].functions[func].path.trim(),
+                    doc: cleanLinesDoc(express.models[file].functions[func].doc)
+                };
+                if (_jsdoc.path_o.charAt(0)=='/') _jsdoc.path_o = _jsdoc.path_o.substr(1,_jsdoc.path_o.length-1); 
+                if (_jsdoc.doc=='') _jsdoc.doc = 'Funcion no documentada';
+                //console.log('PABLO debug without first0:',_jsdoc.path_o);
+                let without_first = listDeleteAt(_jsdoc.path_o,1,'/');
+                //console.log('PABLO debug without first1:',without_first);
+                _jsdoc.path = `/${without_first}`;
+                _jsdoc.method_name = _jsdoc.path_o.split('/').pop(); // last / item; f_jname
+                _jsdoc.memberof = listDeleteAt(_jsdoc.path_o,_jsdoc.path_o.split('/').length,'/');
+                _jsdoc.memberof = _jsdoc.memberof.replaceAll('_','|').replaceAll('/','_');
+                let doc = `/**
+ * (${_jsdoc.method.toUpperCase()}) ${_jsdoc.doc}
+ * @method
+ * @name ${func.replaceAll('_',' / ').replaceAll('|','_')}
+ * @alias ${_jsdoc.method_name}
+ * @memberof! ${_jsdoc.memberof}\n`;
+                // add params doc of function
+                let func_params = express.models[file].functions[func].params.split(',');
+                for (let param of func_params) {
+                    let param_wstar = param.replaceAll('*','');
+                    if (express.models[file].functions[func].param_doc[param_wstar]) {
+                        let p_type = ccase.pascalize(express.models[file].functions[func].param_doc[param_wstar].type);
+                        let p_desc = express.models[file].functions[func].param_doc[param_wstar].desc.trim();
+                        doc += ` * @param {${p_type}} ${param} ${p_desc}\n`;
+                    } else {
+                        if (param.trim()=='id' && !param.includes('identificador')) {
+                            doc += ` * @param {Int} ${param}\n`;
+                        } else if (param.includes('base64')) {
+                            doc += ` * @param {Base64} ${param}\n`;
+                        } else {
+                            doc += ` * @param {String} ${param}\n`;
+                        }
+                    }
+                }
+                // return
+                if (express.models[file].functions[func].param_doc.return) {
+                    let p_type = ccase.pascalize(express.models[file].functions[func].param_doc.return.type);
+                    let p_desc = express.models[file].functions[func].param_doc.return.desc.trim();
+                    doc += `* @return ${p_type} ${p_desc}\n`;
+                } else if (_jsdoc.doc.includes('@return')==false) {
+                    doc += `* @return {object}\n`;
+                }
+                doc += ` */\n`;
+                // router code
+                doc += `router.${_jsdoc.method}('${_jsdoc.path}', function(req, res, next) {
+                    wait.launchFiber(${file}.${func}, req, res);
+                });\n`;
+                // add doc to content if func is visible
+                if (express.models[file].functions[func].visible==true) {
+                    content += doc+'\n';
+                }
+                // 
+            }
+            // write exports
+            content += `module.exports = router;\n`;
+            // write file
+            let target = path.join(this.x_state.dirs.routes,file+'.js');
+            await this.writeFile(target,content);
+        }
+    }
+
     async onEnd() {
         //execute deploy (npm install, etc) AFTER vue compilation (18-4-21: this is new)
         if (!this.errors_found) {
@@ -762,6 +945,21 @@ function onListening() {
         } catch(e) {
             return false;
         }
+    }
+
+    async prettyCode(ext='js',content) {
+        let prettier = require('prettier'), resp = content;
+        if (ext=='js') {
+            try {
+                resp = prettier.format(resp, { parser: 'babel', useTabs:true, singleQuote:true });
+            } catch(ee) {
+                this.debug(`error: could not format the JS file; trying js-beautify`);
+                let beautify = require('js-beautify');
+                let beautify_js = beautify.js;
+                resp = beautify_js(resp,{});
+            }
+        }
+        return resp;
     }
 
     async writeFile(file,content,encoding='utf-8') {
@@ -809,18 +1007,32 @@ function onListening() {
         //this.x_console.out({ message:'onCreateFiles', data:processedNodes });
         //this.x_console.out({ message:'x_state', data:this.x_state });
         await this._writeModelos();
-        //await this.generalConfigSetup();
         await this.createGitIgnore();
+        //write .npmrc file for ffmpeg support
+        await this.writeFile(path.join(this.x_state.dirs.app,'.npmrc'),`unsafe-perm=true`);
+        this.debug('processing nodes');
+        //console.log('PABLO debug x_state function general/login',this.x_state.functions.general_login);
+        //console.log('PABLO debug create nodes',processedNodes);
+        //group functions into express models (first folder is dad model)
+        let express = await this.getExpressModels();
+        //let express = { models:express_base.models, routes:express_base.routes }; // grouped functions by main path folder
+        // add code to express models
+        for (let thefile_num in processedNodes)  {
+            let thefile = processedNodes[thefile_num];
+            if (express.models[thefile.file]) {
+                //express.models[thefile.file].code = await this.prettyCode('js',thefile.code);
+                express.models[thefile.file].code = thefile.code;
+                break;
+            }
+        }
+        //console.log('PABLO debug EXPRESS models',express.models);
+        await this.createAppJS(express);
+        await this.createIndex(express);
         await this.createErrorTemplate();
         await this.createJSDoc();
         await this.createReadme();
         await this.createBinFile();
-        //write .npmrc file for ffmpeg support
-        this.writeFile(path.join(this.x_state.dirs.app,'.npmrc'),`unsafe-perm=true`);
-        this.debug('processing nodes');
-        console.log('PABLO debug x_state',this.x_state);
-        //console.log('PABLO debug create nodes',processedNodes);
-        //group functions into express models (first folder is dad model)
+        await this.createRoutes(express);
         /*
         for (let thefile_num in processedNodes)  {
             //await processedNodes.map(async function(thefile) {
