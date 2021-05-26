@@ -930,7 +930,7 @@ module.exports = async function(context) {
                 if (node.icons.includes('bell')) {
                     tmp.text = getTranslatedTextVar(tmp.text);
                 } else {
-                    tmp.text = '`${tmp.text}`';
+                    tmp.text = '`'+tmp.text+'`';
                 }
                 //attr
                 // process attributes
