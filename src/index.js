@@ -820,14 +820,8 @@ function onListening() {
                     used+=1;
                 }
             }
-            //if (resp.slice(-1)=='\n') resp = resp.substr(0,resp.length-1); // erase last \n
             resp += ' * ';
             return resp;
-            /*
-            var esc = '\n'.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-            var reg = new RegExp(esc, 'ig');
-            return text.replace(reg, '').trim().replaceAll('. ','.\n * ');
-            */
         };
         let ccase = require('fast-case'), path = require('path');
         // create routes files from express models
@@ -927,6 +921,51 @@ var ${file} = require('../models/${file}');
         }
     }
 
+    async createModels(express) {
+        let path = require('path');
+        for (let file in express.models) {
+            let content = `//funciones para ruta ${file}\n`;
+            if (this.x_state.config_node.aurora) {
+                content += `const connectToDatabase = require('../db'); // initialize connection\n`;
+            }
+            //requires
+            let requires = [];
+            if (this.deploy_module.codeForModel) {
+                requires = [...requires,...this.deploy_module.codeForModel(express.models[file])];
+            }
+            // add express models imports
+            for (let imp in express.models[file].imports) {
+                requires.push(`var ${imp.replaceAll('-','').replaceAll('@','').replaceAll('/','_')} = require('${imp}');`);
+            }
+            // write header of model
+            content += `const Sequelize = require('sequelize'); // sequelize handler
+            var moment = require('moment');
+            var wait = require('wait.for');
+            var util = require('util');
+            var async = require('async');
+            var _ = require('underscore');
+            var fs = require('fs');
+            const fileType = require('file-type');
+            var path = require('path');
+            // requires globales segun requerimiento de codigos de funciones
+            ${requires.join('\n')}
+            // funciones para cada ruta
+            var self = {};\n`;
+            // add function code
+            content += express.models[file].code;
+            // replace db connection info on funcs init { file_init }
+            for (let func in express.models[file].functions) {
+                let db_conn = `const { ${Object.keys(express.models[file].functions[func].used_models)} } = await connectToDatabase();`;
+                content = content.replaceAll(`{ ${func}_init }`,db_conn);
+            }
+            // write exports
+            content += `module.exports = self;\n`;
+            // write file
+            let target = path.join(this.x_state.dirs.models,file+'.js');
+            await this.writeFile(target,content);
+        }
+    }
+
     async onEnd() {
         //execute deploy (npm install, etc) AFTER vue compilation (18-4-21: this is new)
         if (!this.errors_found) {
@@ -953,7 +992,7 @@ var ${file} = require('../models/${file}');
             try {
                 resp = prettier.format(resp, { parser: 'babel', useTabs:true, singleQuote:true });
             } catch(ee) {
-                this.debug(`error: could not format the JS file; trying js-beautify`);
+                //this.debug(`error: could not format the JS file; trying js-beautify`);
                 let beautify = require('js-beautify');
                 let beautify_js = beautify.js;
                 resp = beautify_js(resp,{});
@@ -1020,9 +1059,7 @@ var ${file} = require('../models/${file}');
         for (let thefile_num in processedNodes)  {
             let thefile = processedNodes[thefile_num];
             if (express.models[thefile.file]) {
-                //express.models[thefile.file].code = await this.prettyCode('js',thefile.code);
                 express.models[thefile.file].code = thefile.code;
-                break;
             }
         }
         //console.log('PABLO debug EXPRESS models',express.models);
@@ -1033,102 +1070,19 @@ var ${file} = require('../models/${file}');
         await this.createReadme();
         await this.createBinFile();
         await this.createRoutes(express);
-        /*
-        for (let thefile_num in processedNodes)  {
-            //await processedNodes.map(async function(thefile) {
-            let thefile = processedNodes[thefile_num];
-            let contenido = thefile.code + '\n';
-            if (thefile.file.split('.').slice(-1) == 'omit') {
-                await this.processOmitFile(thefile);
-                //process special non 'files'
-            } else {
-                this.debug('processing node ' + thefile.title);
-                let vue = await this.getBasicVue(thefile);
-                let page = this.x_state.pages[thefile.title];
-                // @TODO check the vue.template replacements (8-mar-21)
-                // declare server:asyncData
-                this.debug('post-processing internal custom tags');
-                vue = await this.processInternalTags(vue, page);
-                // closure ...
-                // **** **** start script wrap **** **** **** **** 
-                let script_imports = '';
-                // header for imports
-                if (page) {
-                    for (let key in page.imports) {
-                        script_imports += `import ${page.imports[key]} from '${key}';\n`;
-                    } //);
-                }
-                // export default
-                vue.script = `{concepto:mixins:import}
-				${script_imports}
-				export default {
-					${vue.script}
-                    {concepto:mixins:array}
-				}`
-                // **** **** end script wrap **** **** 
-                // process Mixins
-                vue = this.processMixins(vue, page);
-                // process Styles
-                vue = this.processStyles(vue, page);
-                // removes refx attributes
-                vue = this.removeRefx(vue);
-                // fix {vuepath:} placeholders
-                vue = this.fixVuePaths(vue, page);
-                // process lang files (po)
-                vue = await this.processLangPo(vue, page);
-                // ********************************** //
-                // beautify the script and template
-                // ********************************** //
-                vue.script = '<script>\n' + vue.script + '\n</script>';
-                if (!vue.style) vue.style = '';
-                vue.full = `${vue.template}\n${vue.script}\n${vue.style}`;
-                // ********************************** //
-                // write files
-                let w_path = path.join(this.x_state.dirs.pages, thefile.file);
-                if (page.tipo == 'componente') {
-                    this.x_console.outT({ message: `trying to write vue 'component' file ${thefile.file}`, color: 'cyan' });
-                    w_path = path.join(this.x_state.dirs.components, thefile.file);
-                } else if (page.tipo == 'layout') {
-                    this.x_console.outT({ message: `trying to write vue 'layout' file ${thefile.file}`, color: 'cyan' });
-                    w_path = path.join(this.x_state.dirs.layouts, thefile.file);
-                } else {
-                    this.x_console.outT({ message: `trying to write vue 'page' file ${thefile.file}`, color: 'cyan' });
-                }
-                await this.writeFile(w_path, vue.full);
-                //
-                //this.x_console.out({ message: 'vue ' + thefile.title, data: { vue, page_style: page.styles } });
-            }
-            //this.x_console.out({ message:'pages debug', data:this.x_state.pages });
-            await this.setImmediatePromise(); //@improved
-        }
-        */
+        await this.createModels(express);
         // *************************
         // Additional steps
         // *************************
         //create package.json
         await this.createPackageJSON();
-        /*if (!this.x_state.central_config.componente) {
-            //await this.createVueXStores();
-            //await this.createServerMethods();
-            //await this.createMiddlewares();
-            //create server files (nuxt express, mimetypes)
-            //await this.prepareServerFiles();
-            //declare required plugins
-            //await this.installRequiredPlugins();
-            //create NuxtJS plugin definition files
-            //let nuxt_plugs = await this.createNuxtPlugins(); //return plugin array list for nuxt.config.js
-            //this.x_state.nuxt_config.plugins = nuxt_plugs.nuxt_config;
-            //this.x_state.nuxt_config.css = nuxt_plugs.css_files;
-            //create nuxt.config.js file
-            await this.createNuxtConfig()
-            //create package.json
-            await this.createPackageJSON();
-            //create VSCode helpers
-            await this.createVSCodeHelpers();
-            //create serverless.yml for deploy:sls - cfc:12881
-            await this.createServerlessYML();
-            //execute deploy (npm install, etc) - moved to onEnd
-        }*/
+        //create package.json
+        //await this.createPackageJSON();
+        //create VSCode helpers
+        //await this.createVSCodeHelpers();
+        //create serverless.yml for deploy:sls - cfc:12881
+        //await this.createServerlessYML();
+        //execute deploy (npm install, etc) - moved to onEnd
         
     }
 

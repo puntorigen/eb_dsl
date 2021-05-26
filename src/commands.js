@@ -930,7 +930,7 @@ module.exports = async function(context) {
                 if (node.icons.includes('bell')) {
                     tmp.text = getTranslatedTextVar(tmp.text);
                 } else {
-                    tmp.text = `'${tmp.text}'`;
+                    tmp.text = '`${tmp.text}`';
                 }
                 //attr
                 // process attributes
@@ -1097,6 +1097,7 @@ module.exports = async function(context) {
                     symbol: `"`,
                     symbol_closing: `"`
                 }).trim();
+                context.x_state.functions[resp.state.current_func].used_models[tmp.model]='';
                 //get attributes and values as struct
                 tmp.data = (await context.x_commands['def_struct'].func(node, { ...state, ...{
                     as_object:true
@@ -1126,6 +1127,7 @@ module.exports = async function(context) {
                     symbol: `"`,
                     symbol_closing: `"`
                 }).trim();
+                context.x_state.functions[resp.state.current_func].used_models[tmp.model]='';
                 //get attributes and values as struct
                 tmp.data = (await context.x_commands['def_struct'].func(node, { ...state, ...{
                     as_object:true
@@ -1224,6 +1226,7 @@ module.exports = async function(context) {
                             symbol: `"`,
                             symbol_closing: `"`
                         }).trim();
+                        context.x_state.functions[resp.state.current_func].used_models[tmp.model]='';
                         tmp.model_where = link_node.id + '.where';
                         //code
                         if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;

@@ -100,6 +100,12 @@ export default class base_deploy {
         return envs; //array with already set env vars
     }
 
+    async codeForModel(model) {
+        //express = {models,routes}
+        //returns array with records of lines of code
+        return [];
+    }
+
     // HELPER methods
     async exists(dir_or_file) {
         let fs = require('fs').promises;
