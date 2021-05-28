@@ -42,6 +42,127 @@ export default class eb extends base_deploy {
         return true;
     }
 
+    async _createEBx_configNode() {
+        // create 01_confignode content for setting ENV vars within EB instance
+        let yaml = require('yaml');
+        let data = {
+            option_settings: {
+                'aws:elasticbeanstalk:application:environment' : {
+                    APP_PORT: this.context.central_config.port,
+                    CLUSTER: 1,
+                    START_TYPE: 'development'
+                }
+            }
+        };
+        //instancetype
+        if (this.context.central_config.instance_type) {
+            data.option_settings.container_commands = {
+                'aws:autoscaling:launchconfiguration': {
+                    InstanceType: this.context.central_config.instance_type
+                }
+            };  
+        }
+        //port
+        if (this.context.central_config.port!=8081) {
+            data.container_commands = {
+                '00_remove_redirect_http': {
+                    command: 'sudo iptables -t nat -D PREROUTING -i eth0 -p tcp --dport 80 -j REDIRECT --to-port 8080'
+                },
+                '01_add_redirect_http': {
+                    command: `sudo iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 80 -j REDIRECT --to-port ${this.context.central_config.port}`
+                }
+            };
+            data.option_settings['aws:elasticbeanstalk:environment'] = {
+                EnvironmentType: 'SingleInstance'
+            };
+        }
+        //stage & env_variables
+        if (this.context.central_config.stage && this.context.central_config.stage!='') {
+            data.option_settings['aws:elasticbeanstalk:application:environment'].STAGE = this.context.central_config.stage;
+            if (this.context.central_config.stage!='dev') {
+                data.option_settings['aws:elasticbeanstalk:application:environment'].START_TYPE = this.context.central_config.stage;
+            }
+        }
+        for (let key in this.context.x_state.config_node) {
+            // omit special config 'reserved' (aurora,vpc,aws) node keys
+            if (!['copiar'].includes(key) && typeof this.context.x_state.config_node[key] === 'object') {
+                Object.keys(this.context.x_state.config_node[key]).map(function(attr) {
+                    data.option_settings['aws:elasticbeanstalk:application:environment'][key.toUpperCase()+'_'+attr.toUpperCase()] = this.context.config_node[key][attr];
+                }.bind(this));
+            }
+        }
+        //write
+        let path = require('path');
+        let eb_base = this.context.x_state.dirs.app;
+        let eb_dir = path.join(eb_base,'.ebextensions');
+        await this.context.writeFile(path.join(eb_dir,'01_confignode.config'),yaml.stringify(data, { version:'1.1' }));
+    }
+
+    async _createEBx_timeout() {
+        // create 01_confignode content for setting ENV vars within EB instance
+        if (this.context.central_config.timeout) {
+            let yaml = require('yaml');
+            let data = {
+                container_commands: {
+                    extend_proxy_timeout: {
+                        command: 
+`sed -i '/\s*location \/ {/c \
+        client_max_body_size 500M; \
+        location / { \
+                proxy_connect_timeout       ${this.context.central_config.timeout};\
+                proxy_send_timeout          ${this.context.central_config.timeout};\
+                proxy_read_timeout          ${this.context.central_config.timeout};\
+                send_timeout                ${this.context.central_config.timeout};\
+        ' /tmp/deployment/config/##etc##nginx##conf.d##00_elastic_beanstalk_proxy.conf`
+                    }
+                }
+            };
+            //write
+            let path = require('path');
+            let eb_base = this.context.x_state.dirs.app;
+            let eb_dir = path.join(eb_base,'.ebextensions');
+            await this.context.writeFile(path.join(eb_dir,'extend-proxy-timeout.config'),yaml.stringify(data, { version:'1.1' }));
+        }
+    }
+
+    async _createEBx_sockets() {
+        // create enable-websockets.config
+        let yaml = require('yaml');
+        let data = {
+            container_commands: {
+                enable_websockets: {
+                    command: 
+`sed -i '/\s*proxy_set_header\s*Connection/c \
+        proxy_set_header Upgrade $http_upgrade;\
+        proxy_set_header Connection ""upgrade"";\
+        ' /tmp/deployment/config/##etc##nginx##conf.d##00_elastic_beanstalk_proxy.conf`
+                }
+            }
+        };
+        //write
+        let path = require('path');
+        let eb_base = this.context.x_state.dirs.app;
+        let eb_dir = path.join(eb_base,'.ebextensions');
+        await this.context.writeFile(path.join(eb_dir,'enable-websockets.config'),yaml.stringify(data, { version:'1.1' }));
+    }
+
+    async _createEBx_puppeteer() {
+        // create puppeteer.config (chromium support)
+        let yaml = require('yaml');
+        let data = {
+            container_commands: {
+                install_chrome: {
+                    command: 'curl https://intoli.com/install-google-chrome.sh | bash'
+                }
+            }
+        };
+        //write
+        let path = require('path');
+        let eb_base = this.context.x_state.dirs.app;
+        let eb_dir = path.join(eb_base,'.ebextensions');
+        await this.context.writeFile(path.join(eb_dir,'puppeteer.config'),yaml.stringify(data, { version:'1.1' }));
+    }
+
     async run() {
         let spawn = require('await-spawn');
         let errors = [];
@@ -57,40 +178,24 @@ export default class eb extends base_deploy {
         if (eb_appname!='') {
             let spinner = this.context.x_console.spinner({ message:'Creating config files' });
             //this.x_console.outT({ message:`Creating EB config yml: ${eb_appname} in ${eb_instance}`, color:'yellow' });
-            let yaml = require('yaml');
-            let data = {
-                'branch-defaults': {
-                    master: {
-                        enviroment: eb_instance,
-                        group_suffix: null
-                    }
-                },
-                global: {
-                    application_name: eb_appname,
-                    branch: null,
-                    default_ec2_keyname: 'aws-eb',
-                    default_platform: 'Node.js',
-                    default_region: 'us-east-1',
-                    include_git_submodules: true,
-                    instance_profile: null,
-                    platform_name: null,
-                    platform_version: null,
-                    profile: null,
-                    repository: null,
-                    sc: 'git',
-                    workspace_type: 'Application'
-                }
-            };
-            //create .elasticbeanstalk directory
+            //create .ebextensions directory
             let path = require('path'), fs = require('fs').promises;
             let eb_base = this.context.x_state.dirs.app;
-            if (this.context.x_state.central_config.static) eb_base = path.join(eb_base,'dist');
-            let eb_dir = path.join(eb_base,'.elasticbeanstalk');
+            let eb_dir = path.join(eb_base,'.ebextensions');
             try { await fs.mkdir(eb_dir, { recursive: true }); } catch(ef) {}
-            //write .elasticbeanstalk/config.yml file with data
-            await this.context.writeFile(path.join(eb_dir,'config.yml'),yaml.stringify(data));
             //write .npmrc file
             await this.context.writeFile(path.join(eb_base,'.npmrc'),'unsafe-perm=true');
+            //write .ebextensions/01_confignode.config
+            await this._createEBx_configNode();
+            //write .ebextensions/extend-proxy-timeout.config
+            await this._createEBx_timeout();
+            //enable websockets?
+            if (this.context.central_config.rtc==true) {
+                await this._createEBx_sockets();
+            }
+            if (this.context.npm.puppeteer || this.context.npm['puppeteer-code']) {
+                await this._createEBx_puppeteer();
+            }
             //create .ebignore file
 let eb_ig = `node_modules/
 jspm_packages/
