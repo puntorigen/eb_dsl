@@ -239,7 +239,7 @@ module.exports = async function(context) {
                 return resp;
             }
         },
-        'def_function': { //@TODO finish incomplete
+        'def_function': {
             x_empty: 'icons',
             x_level: '>2',
             x_or_hasparent: 'def_path',
@@ -257,6 +257,7 @@ module.exports = async function(context) {
                 // set function defaults
                 if (!context.x_state.functions[resp.state.current_func]) {
                     context.x_state.functions[resp.state.current_func] = {
+                        nodeid: node.id,
                         tipo: 'web',
                         acceso: '*',
                         params: '',
@@ -314,121 +315,45 @@ module.exports = async function(context) {
                 }
                 resp.close = `}\n`;
                 context.x_state.functions[resp.state.current_func].code=resp;
-                /*
-                resp.open = context.tagParams('func_code', {
-                    name: resp.state.current_func,
-                    method: context.x_state.functions[resp.state.current_func].method,
-                    path: context.x_state.functions[resp.state.current_func].path
-                }, false) + '\n';
-                resp.close = '</func_code>';
-                *///
                 return resp;
             }
         },
 
-        //*def_page
-
-        'def_page': {
-            x_level: 2,
-            x_not_icons: 'button_cancel,desktop_new,list,help',
-            x_not_text_contains: 'componente:,layout:',
-            hint: 'Archivo vue',
+        'def_llamar_funcion': {
+            x_icons: 'desktop_new',
+            x_level: '>2',
+            x_not_empty: 'link',
+            x_text_contains: 'llamar funcion',
+            x_or_hasparent: 'def_function',
+            hint: 'Ejecuta funcion enlazada, traspasando atributos como parametros y retornando valor en variable despues de la coma',
             func: async function(node, state) {
                 let resp = context.reply_template({
                     state
                 });
-                resp.state.current_page = node.text;
-                // set global page defaults for current page
-                if (!context.x_state.pages[resp.state.current_page]) {
-                    context.x_state.pages[resp.state.current_page] = {
-                        tipo: 'page',
-                        acceso: '*',
-                        params: '',
-                        layout: '',
-                        defaults: {},
-                        imports: {},
-                        components: {},
-                        directives: {},
-                        variables: {},
-                        seo: {},
-                        meta: {},
-                        head: {
-                            script: [],
-                            meta: [],
-                            seo: {}
-                        },
-                        var_types: {},
-                        proxies: '',
-                        return: '',
-                        styles: {},
-                        script: {},
-                        mixins: {},
-                        track_events: {},
-                        path: '/' + resp.state.current_page
-                    };
-                }
-                if (resp.state.from_def_layout) context.x_state.pages[resp.state.current_page].tipo = 'layout';
-                if (resp.state.from_def_componente) context.x_state.pages[resp.state.current_page].tipo = 'componente';
-                // is this a 'home' page ?
-                if (node.icons.includes('gohome')) context.x_state.pages[resp.state.current_page].path = '/';
-                // attributes overwrite anything
-                let params = {};
-                Object.keys(node.attributes).map(function(key) {
-                    let value = node.attributes[key];
-                    // preprocess value
-                    value = value.replaceAll('$variables.', '')
-                        .replaceAll('$vars.', '')
-                        .replaceAll('$params.', '')
-                        .replaceAll('$config.', 'process.env');
-                    // query attributes
-                    if (['proxy'].includes(key.toLowerCase())) {
-                        context.x_state.pages[resp.state.current_page].proxies = value;
-
-                    } else if (['acceso', 'method'].includes(key.toLowerCase())) {
-                        context.x_state.pages[resp.state.current_page].acceso = value;
-
-                    } else if (['path', 'url', 'ruta'].includes(key.toLowerCase())) {
-                        context.x_state.pages[resp.state.current_page].path = value;
-
-                    } else if (['layout'].includes(key.toLowerCase())) {
-                        context.x_state.pages[resp.state.current_page].layout = value;
-
-                    } else if (['meta:title', 'meta:titulo'].includes(key.toLowerCase())) {
-                        context.x_state.pages[resp.state.current_page].xtitle = value;
-
-                    } else {
-                        if (key.charAt(0) != ':' && value != node.attributes[key]) {
-                            params[':' + key] = value;
-                        } else {
-                            params[key] = value;
-                        }
-                        //context.x_state.pages[resp.state.current_page].xtitle = value;
-                        
-                    }
-                    if (resp.state.from_def_layout || resp.state.from_def_componente) {
-                        if (key=='params') {
-                            context.x_state.pages[resp.state.current_page].params=value;
-                        } else if (key.includes('params:') || key.includes('param:')) {
-                            let tmpo = key.replaceAll('params:','').replaceAll('param:','').trim();
-                            context.x_state.pages[resp.state.current_page].defaults[tmpo] = value;
-                        }
-                        //console.log('PABLO COMPONENTE!! o LAYOUT!!',{ key, value });
-                    }
-                }.bind(this));
-                // has comments ?
-                if (node.text_note != '') {
-                    resp.open = `<!-- ${node.text_note.cleanLines()} -->\n`;
-                }
-                // set code
-                resp.open += `<template>\n`;
-                if ('from_def_componente' in resp.state === false) {
-                    if (context.x_state.pages[resp.state.current_page]['layout'] == '') {
-                        resp.open += '\t' + context.tagParams('v-app', params, false) + '\n';
-                        resp.close += '\t</v-app>\n';
+                let tmp = {};
+                tmp.var = node.text.split(',').pop().trim(); //last comma element
+                //search target functon
+                for (let func in context.x_state.functions) {
+                    if (context.x_state.functions[func].nodeid==node.link) {
+                        tmp.name = func;
+                        tmp.func = context.x_state.functions[func];
+                        break;
                     }
                 }
-                resp.close += `</template>\n`;
-                // return
+                if (!tmp.name) return {...resp,...{valid:false}}; //target func not found
+                //write
+                if (node.text_note != '') resp.open = `// ${node.text_note.cleanLines()}\n`;
+                //context.debug('PABLO debug, comparing ',{ func_name:tmp.name, currentpath:context.x_state.functions[resp.state.current_func].path, func_path:tmp.func.path });
+                if (context.x_state.functions[resp.state.current_func].path.split('/')[0]==tmp.func.path.split('/')[0]) {
+                    // target function is within our own model
+                    resp.open += `let ${tmp.var} = (await self.${tmp.name}({ body:${context.jsDump(node.attributes)} }, res, true ));\n`;
+                } else {
+                    // target function is on another file
+                    tmp.model = tmp.func.path.split('/')[0];
+                    resp.open += `let import_${node.id} = require('./${tmp.model}');\n`;
+                    resp.open += `let ${tmp.var} = (await import_${node.id}).${tmp.name}({ body:${context.jsDump(node.attributes)} }, res, true ));\n`;
+                }
+                //return
                 return resp;
             }
         },
@@ -868,14 +793,8 @@ module.exports = async function(context) {
                     symbol_closing: '"'
                 }).trim();
                 // clean given varname $variables, etc.
-                if ((await context.hasParentID(node.id, 'def_event_server'))==true) { //@todo change after checking (revision) concepto inherited states; if (resp.state.from_server) {
-                    tmp.var = tmp.var.replaceAll('$variables.', 'resp.')
-                                     .replaceAll('$vars.', 'resp.').replaceAll('$params.', 'resp.');
-                    tmp.var = (tmp.var == 'resp.') ? 'resp' : tmp.var;
-                } else {
-                    tmp.var = tmp.var.replaceAll('$variables.', 'this.').replaceAll('store.', 'this.$store.state.');
-                    tmp.var = (tmp.var == 'this.') ? 'this' : tmp.var;
-                }
+                tmp.var = tmp.var.replaceAll('$variables.', 'this.').replaceAll('store.', 'this.$store.state.');
+                tmp.var = (tmp.var == 'this.') ? 'this' : tmp.var;
                 // extend given var with 'extend_node' content
                 // support attr = !attr - 13may21
                 for (let x in obj.state.object) {
@@ -988,8 +907,6 @@ module.exports = async function(context) {
                 if (!attr.require) {
                     if ('current_func' in resp.state) {
                         context.x_state.functions[resp.state.current_func].imports[attr.text] = attr.tipo_;
-                    } else {
-                        context.x_state.pages[resp.state.current_page].imports[attr.text] = attr.tipo_;
                     }
                 } else {
                     resp.open += `let ${attr.var} = require('${attr.text}');\n`;
@@ -1615,8 +1532,7 @@ module.exports = async function(context) {
                                      .replaceAll('$store.','this.$store.state.');pon
                     tmp.original = tmp.original.replaceAll('$variables.','this.')
                                                .replaceAll('$vars.','this.')
-                                               .replaceAll('$params.','this.')
-                                               .replaceAll('$store.','this.$store.state.');
+                                               .replaceAll('$params.','this.');
                 }
                 if (tmp.original.includes('**') && node.icons.includes('bell')) {
                     tmp.original = getTranslatedTextVar(tmp.original);
@@ -1652,89 +1568,6 @@ module.exports = async function(context) {
                     resp.open += `${tmp.original} = _.each(${tmp.original}, function(element) {
                         element = Object.assign(element,${tmp.attr.open});
                     });`;
-                }
-                return resp;
-            }
-        },
-
-        'def_preguntar': {
-        	x_level: '>2',
-        	x_icons: 'desktop_new',
-            x_text_contains: 'preguntar|dialogo:confirm',
-            attributes_aliases: {
-                'title':                 'titulo,title',
-                'message':               'mensaje,contenido,message',
-                'buttonTrueText':        'true,aceptar,boton:aceptar',
-                'buttonFalseText':       'false,cancel,boton:cancelar',
-                'width':                 'ancho,width',
-                'icon':                  'icon,icono',
-                'persistent':            'persistent,obligatorio,persistente'
-            },
-            /*x_test_func: function(node) {
-                //return true if its a valid match
-            },*/
-            hint: `Abre un dialogo preguntando lo indicado en sus atributos, respondiendo true o false en la variable indicada luego de la coma.`,
-        	func: async function(node, state) {
-                let resp = context.reply_template({ state });
-                if (!state.from_script) return {...resp,...{ valid:false }};
-                //get vars and attrs
-                let tmp = { var:'', text:'' };
-                if (node.text.includes(',')) tmp.var = node.text.split(',').pop().trim();
-                //add plugin
-                context.x_state.plugins['vuetify-confirm'] = {
-                    global:true,
-                    mode: 'client',
-                    npm: { 'vuetify-confirm':'*' },
-                    extra_imports: ['vuetify'],
-                    config: '{ vuetify }'
-                };
-                //attrs
-                let params = aliases2params('def_preguntar', node, false, 'this.');
-                delete params.refx;
-                //process message attribute
-                if (params.message) {
-                    /* ex.= 'Estas seguro que deseas borrar {{ x }} ?'
-                    'Estas seguro que deseas borrar '+x+' ?'
-                    */
-                    tmp.text = params.message;
-                    let new_val = '';
-                    let vars = context.dsl_parser.findVariables({
-                        text: params.message,
-                        symbol: `{{`,
-                        symbol_closing: `}}`,
-                        array:true
-                    });
-                    for (let vr in vars) {
-                        if (vars[vr].includes('|')) {
-                            //add filter support: 'Estas seguro que deseas agregar {{ monto | numeral('0,0') }} ?'
-                            let clean = vars[vr].replaceAll('{{','').replaceAll('}}','');
-                            let the_var = clean.split('|')[0].trim();
-                            let the_filter = clean.split('|').pop().trim();
-                            the_filter = the_filter.replace('(',`(${the_var},`);
-                            tmp.text = tmp.text.replace(vars[vr],`'+this.$nuxt.$options.filters.${the_filter}+'`);
-                        } else {
-                            let n_var = vars[vr].replaceAll('{{',`'+`).replaceAll('}}',`+'`);
-                            tmp.text = tmp.text.replace(vars[vr],n_var);
-                        }
-                    }
-                    //
-                    tmp.text = `'${tmp.text}'`;
-                    delete params.message;
-                }
-                //code
-                if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
-                if (tmp.text && Object.keys(params)==0) {
-                    if (tmp.var.includes('this.')) {
-                        resp.open += `${tmp.var} = await this.$confirm(${tmp.text});\n`;
-                    } else {
-                        resp.open += `let ${tmp.var} = await this.$confirm(${tmp.text});\n`;
-                    }
-                } else {
-                    if (tmp.var.includes('this.')) {
-                        resp.open += `${tmp.var} = await this.$confirm(${tmp.text},${context.jsDump(params)});\n`;
-                    } else {
-                        resp.open += `let ${tmp.var} = await this.$confirm(${tmp.text},${context.jsDump(params)});\n`;
-                    }
                 }
                 return resp;
             }
@@ -1784,8 +1617,7 @@ module.exports = async function(context) {
                         tmp.original = tmp.original.replaceAll('$variables.', 'this.')
                                                     .replaceAll('$vars.', 'this.')
                                                     .replaceAll('$params.', 'this.')
-                                                    .replaceAll('$config.', 'process.env.')
-                                                    .replaceAll('$store.', 'this.$store.state.');
+                                                    .replaceAll('$config.', 'process.env.');
                         if (tmp.original=='this.') tmp.original='this';
                     }
                 }
@@ -1800,115 +1632,6 @@ module.exports = async function(context) {
             }
         },
 
-        'def_enviarpantalla': {
-        	x_level: '>2',
-        	x_icons: 'desktop_new',
-            x_text_contains: 'enviar a pantalla',
-            x_not_empty: 'link',
-            attributes_aliases: {
-                'event_label':      'tag,tipo,etiqueta,event_label'
-            },
-            meta_type: 'script',
-            hint: 'Envia al usuario a la pantalla enlazada.',
-        	func: async function(node, state) {
-                let resp = context.reply_template({ state });
-                if (!state.from_script) return {...resp,...{ valid:false }};
-                if (node.link.includes('ID_')==false) return {...resp,...{ valid:false }};
-                // prepare
-                let tmp = { link:node.link, target:'' };
-                let link_node = await context.dsl_parser.getNode({ id:node.link, recurse:false });
-                if (link_node && link_node.valid==true) {
-                    tmp.target = `{vuepath:${link_node.text}}`;
-                } else {
-                    context.x_console.outT({ message:`enviar a pantalla, invalid linked node`, color:'red', data:link_node });
-                    throw `Invalid 'enviar a pantalla' linked node`;
-                }
-                //code
-                //if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
-                let isProxySon = ('current_proxy' in resp.state)?true:false;
-                if (isProxySon==true) {
-                    resp.open += `return redirect('${tmp.target}');\n`;
-                } else {
-                    // params
-                    let params = aliases2params('def_enviarpantalla', node, false, 'this.');
-                    delete params.refx;
-                    if (Object.keys(params)!='') {
-                        if (tmp.target.charAt(0)=='/') tmp.target = tmp.target.right(tmp.target.length-1);
-                        if (params[':query']) {
-                            resp.open += `this.$router.push({ path:'${tmp.target}', query:${context.jsDump(params)} });\n`;
-                        } else {
-                            resp.open += `this.$router.push({ name:'${tmp.target}', params:${context.jsDump(params)} });\n`;
-                        }    
-                    } else {
-                        resp.open += `this.$router.push('${tmp.target}');\n`;
-                    }
-                }
-                return resp;
-                
-            }
-        },
-
-        'def_procesar_imagen': {
-        	x_level: '>2',
-        	x_icons: 'desktop_new',
-            x_text_contains: 'procesar imagen|transformar imagen|ajustar imagen|imagen:transform',
-            attributes_aliases: {
-                'grey':      'greyscale,gris,grises,grey',
-                'maxkb':     'maxkb,compress',
-                'format':    'format,format,mimetype'
-            },
-            meta_type: 'script',
-            hint: 'Aplica las modificaciones indicadas en sus atributos a la imagen (dataurl) indicada como variables. Retorna un dataurl de la imagen modificada.',
-        	func: async function(node, state) {
-                let resp = context.reply_template({ state });
-                if (!state.from_script) return {...resp,...{ valid:false }};
-                // get: cmd 'input', output / prepare params
-                let tmp = await parseInputOutput(node,state);
-                let params = (await context.x_commands['def_struct'].func(node, { ...state, ...{
-                    as_object:true
-                }})).state.object;
-                //code
-                context.x_state.npm['image-js'] = '*';
-                if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
-                resp.open += `let { Image } = require('image-js');
-                let ${node.id} = ${tmp.input};\n`;
-                if (params.maxkb) {
-                    //compress first
-                    context.x_state.npm['browser-image-compression'] = '*';
-                    context.x_state.pages[resp.state.current_page].imports['browser-image-compression'] = 'imageCompression';
-                    resp.open += `let ${node.id}_f = await imageCompression.getFilefromDataUrl(${tmp.input});
-                    let ${node.id}_c = await imageCompression(${node.id}_f, { maxSizeMB: ${params.maxkb}/1000 });
-                    ${node.id} = await imageCompression.getDataUrlFromFile(${node.id}_c);\n`;
-                }
-                //scale and fxs
-                resp.open += `let ${tmp.output}_ = await Image.load(${node.id});\n`;
-                if (tmp.output.includes('this.')==false) resp.open += `let `;
-                resp.open += `${tmp.output} = ${tmp.output}_`;
-                // params
-                if (params.anchomax) resp.open += `.resize({ width:(${tmp.output}_.width>${params.anchomax})?${params.anchomax}:${tmp.output}_.width })`;
-                if (params.altomax) resp.open += `.resize({ height:(${tmp.output}_.height>${params.altomax})?${params.altomax}:${tmp.output}_.height })`;
-                if (params.resmax) resp.open += `.resize({ width:(${tmp.output}_.width>${params.resmax})?${params.resmax}:${tmp.output}_.width, height:(${tmp.output}_.height>${params.resmax})?${params.resmax}:${tmp.output}_.height })`;
-                if (params.resize && params.resize.includes('x')) {
-                    resp.open += `.resize({ width:${params.resize.split('x')[0]}, height:${params.resize.split('x').pop().trim()} })`;
-                } else {
-                    resp.open += `.resize({ width:${params.resize}, height:${params.resize} })`;
-                }
-                if (params.grey || params.greyscale || params.gris || params.grises) resp.open += `.grey()`;
-                if (params.format || params.formato || params.mimetype) {
-                    if (params.formato) params.format = params.formato;
-                    if (params.mimetype) params.format = params.mimetype;
-                    if (params.format.includes('/')) {
-                        resp.open += `.toDataURL('${params.format.replaceAll("'","")}')`;
-                    } else {
-                        resp.open += `.toDataURL('image/${params.format.replaceAll("'","")}')`;
-                    }
-                }
-                resp.open += `;\n`;
-                //
-                return resp;
-            }
-        },
-
         //**def_guardar_nota
         //**def_agregar_campos
         //**def_preguntar
@@ -1918,57 +1641,6 @@ module.exports = async function(context) {
         //**def_var_clonar
         //--def_modificar (invalid node for vue)
         //**def_enviarpantalla (todo test)
-
-        'def_analytics_evento': {
-        	x_level: '>2',
-        	x_icons: 'desktop_new',
-            x_text_contains: 'analytics:event',
-            x_or_hasparent: 'def_page,def_componente,def_layout',
-            attributes_aliases: {
-                'event_label':      'tag,tipo,etiqueta,event_label'
-            },
-            meta_type: 'script',
-            hint: 'Envia el evento indicado al Google Analytics configurado.',
-        	func: async function(node, state) {
-                let resp = context.reply_template({ state });
-                if (!state.from_script) return {...resp,...{ valid:false }};
-                //if (!context.x_state.config_node['google:analytics']) return {...resp,...{ valid:false }};
-                // params
-                let params = aliases2params('def_analytics_evento', node, false, 'this.');
-                delete params.refx;
-                let details = {...{
-                    event_category:state.current_page
-                },...params};
-                //event name
-                let event = context.dsl_parser.findVariables({
-                    text: node.text,
-                    symbol: `"`,
-                    symbol_closing: `"`
-                });
-                if (event.includes('**') && node.icons.includes('bell')) {
-                    event = getTranslatedTextVar(event);
-                } else if (event.includes('$')) {
-                    event = event.replaceAll('$variables.', 'this.')
-                                 .replaceAll('$vars.', 'this.')
-                                 .replaceAll('$params.', 'this.')
-                                 .replaceAll('$config.', 'process.env.')
-                                 .replaceAll('$store.', 'this.$store.state.');
-                    event = `'${event}'`;
-                } else if (event.charAt(0) == '(' && event.slice(-1) == ')') {
-                    event = event.slice(1).slice(0, -1);
-                } else {
-                    event = `'${event}'`;
-                }
-                //code
-                if ('google:analytics' in context.x_state.config_node) {
-                    if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
-                    resp.open += `this.$gtag('event', ${event}, ${context.jsDump(details)});\n`;
-                    return resp;
-                } else {
-                    throw 'analytics:event requires config->google:analytics key!'
-                }
-            }
-        },
     
         //**def_analytics_evento - @todo test
         //def_medianet_ad - @todo think about the script2 code issue with cheerio
