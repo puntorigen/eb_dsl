@@ -258,11 +258,7 @@ node_modules/`;
                 }
 
             }
-            if (this.context.x_state.central_config.static==true) {
-                spinner.start('Deploying *static version* to AWS ElasticBean .. please wait');
-            } else {
-                spinner.start('Deploying to AWS ElasticBean .. please wait');
-            }
+            spinner.start('Deploying to AWS ElasticBean .. please wait');
             // execute eb deploy
             try {
                 results.eb_deploy = await spawn('eb',['deploy',eb_instance],{ cwd:eb_base }); //, stdio:'inherit'

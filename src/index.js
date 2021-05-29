@@ -9,7 +9,7 @@ const concepto = require('concepto');
  **/
 //import internal_commands from './commands'
 import deploy_local from './deploys/local'
-//import deploy_eb from './deploys/eb'
+import deploy_eb from './deploys/eb'
 
 export default class eb_dsl extends concepto {
 
@@ -160,6 +160,7 @@ export default class eb_dsl extends concepto {
         // serialize 'secret' config keys as json files in app secrets sub-directory (if any)
         // extract 'secret's from config keys; 
         /* */
+        this.debug('serializing secrets');
         this.x_state.secrets={}; //await _extractSecrets(config_node)
         let path = require('path');
         for (let key in this.x_state.config_node) {
@@ -174,11 +175,14 @@ export default class eb_dsl extends concepto {
                     for (let x in obj_keys) {
                         this.x_state.secrets[key][x.toUpperCase()] = new_obj[x];
                     }
-                    let target = path.join(this.x_state.dirs.secrets, `${key}.json`);
-                    await this.writeFile(target,JSON.stringify(new_obj));
+                    if (this.x_state.dirs.secrets) {
+                        let target = path.join(this.x_state.dirs.secrets, `${key}.json`);
+                        await this.writeFile(target,JSON.stringify(new_obj));
+                    }
                 }
             }
         }
+        this.debug('setting ENV variables');
         // set config keys as ENV accesible variables (ex. $config.childnode.attributename)
         for (let key in this.x_state.config_node) {
             // omit special config 'reserved' (aurora,vpc,aws) node keys
