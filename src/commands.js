@@ -1041,10 +1041,27 @@ module.exports = async function(context) {
                 }).trim();
                 context.x_state.functions[resp.state.current_func].used_models[tmp.model]='';
                 //attributes
-                tmp.info = { _fields:[], _order:[] };
+                tmp.info = { _fields:[], _order:[], _join:{}, _where:{} };
+                let extract = require('extractjs')();
+                let isNumeric = function(n) {
+                    return !isNaN(parseFloat(n)) && isFinite(n);
+                };
+                let escapeKeyVars = function(text) {
+                    let resp = text;
+                    let changes = {
+                        '{now}': 'new Date()'
+                    };
+                    Object.keys(changes).map(function(key) {
+                        if (typeof resp == 'string') {
+                            resp = resp.replaceAll(key,changes[key]);
+                        }
+                    });
+                    return resp;
+                };
+                //process attributes
                 Object.keys(node.attributes).map(function(keym) {
                     let key = keym.toLowerCase();
-                    let value = node.attributes[key];
+                    let value = node.attributes[keym];
                     // fields attr
                     if ([':fields', ':campos'].includes(key)) {
                         if (value.includes(':unicos')) {
@@ -1079,28 +1096,107 @@ module.exports = async function(context) {
                         }
                     //join -> idusuario=usuarios.id -> model:usuario, where 'id = idusuario'
                     } else if ([':join', ':integrar', ':unir'].includes(key)) {
+                        let elements = extract(`{field}={model}.{model_field}`,value);
+                        if (elements.model) {
+                            tmp.info._join[elements.model] = { field:elements.field, external_field:elements.model_field };
+                            //tmp.info._join = { [elements.field]:{ model:elements.model, field:elements.model_field } };
+                            context.x_state.functions[resp.state.current_func].used_models[elements.model]='';
+                        }
+
                     } else if (['_limit', '_limitar', '_limite', '_max', ':limitar', ':limite', ':max', ':limit'].includes(key)) {
-                        
+                        if (node.icons.includes('bell') && value.includes('**')) {
+                            tmp.info._limit = getTranslatedTextVar(value,true);    
+                        } else if (isNumeric(value)) {
+                            tmp.info._limit = parseFloat(value);
+                        } else {
+                            tmp.info._limit = escapeKeyVars(value);
+                        }                        
+
                     } else {
                         // where field...
-
+                        //fecha_vencimiento: { [Sequelize.Op.lt]: new Date() } },
+                        let type = 'String', value_bak = value;
+                        if (isNumeric(value)) {
+                            type = 'Integer';
+                            value = parseFloat(value);
+                        } else if (typeof value=='string' && value.includes(',')) {
+                            type = 'Array';
+                            value = value.split(',');
+                        } else if (typeof value=='string' && value.includes('**') && node.icons.includes('bell')) {
+                            type = 'var';
+                            value = getTranslatedTextVar(value,true);
+                        }
+                        if (typeof value=='string' && key.includes(':')) {
+                            // x:{operator}=value
+                            let elements = extract(`{field}:{operator}`,keym);
+                            if (elements.operator) {
+                                if (elements.operator=='in') {
+                                    tmp.info._where[elements.field] = { '[Sequelize.Op.in]':value };
+                                } else if (elements.operator=='not') {
+                                    tmp.info.i_not=true;
+                                }
+                            }
+                        } else if (typeof value == 'string' && '<,>,='.includes(value.charAt(0))==true) {
+                            // x=>value, x=<value, x=value
+                            let operator = value.charAt(0);
+                            value = value.substr(1,value.length-1);
+                            if (operator=='<') {
+                                tmp.info._where[keym] = { '[Sequelize.Op.lt]':escapeKeyVars(value) };
+                            } else if (operator=='>') {
+                                tmp.info._where[keym] = { '[Sequelize.Op.gt]':escapeKeyVars(value) };
+                                
+                            } else {
+                                tmp.info._where[keym] = value;
+                            }
+                            
+                        } else if (typeof value == 'string' && (value.charAt(0)=='*' || value.split('').splice(-1).join()=='*') && value.includes('**')==false) {
+                            // x=*value, x=value*
+                            value = value_bak.replaceAll('**','||');
+                            value = `'`+value.replaceAll('*','%').replaceAll('||','**')+`'`;
+                            if (tmp.info.i_not) {
+                                tmp.info._where['[Sequelize.Op.not]'] = [{ [key]:{ '[Sequelize.Op.like]':escapeKeyVars(value) } }];
+                            } else {
+                                tmp.info._where[keym] = { '[Sequelize.Op.like]':escapeKeyVars(value) };
+                            }
+                        } else {
+                            // x=value
+                            tmp.info._where[keym] = escapeKeyVars(value);
+                        }
                     }
 
                 });
+                //build object
+                let obj = { where:tmp.info._where, tableHint: 'Sequelize.TableHints.NOLOCK' };
+                if (tmp.info._order.length>0) obj.order=[tmp.info._order];
+                if (tmp.info._fields.length>0) obj.attributes=tmp.info._fields;
+                if (tmp.info._limit) obj.limit=tmp.info._limit;
+                //add join info
+                for (let model in tmp.info._join) {
+                    if (!obj.include) obj.include=[];
+                    obj.include.push({
+                        model,
+                        //where: [`${tmp.info._join[model].external_field} = ${tmp.info._join[model].field}`]
+                    });
+                }
+                //serialize data
+                let data = context.jsDump(obj,'Sequelize.');
                 //code
                 if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
-                /*
-                if (tmp.data.state.object && Object.keys(tmp.data.state.object)!='') {
-                    resp.open += `let ${node.id} = { keys:[], vals:[], where:${tmp.data.open} };
-                    for (let ${node.id}_k in ${node.id}.where) {
-                        ${node.id}.keys.push(${node.id}_k + '=?');
-                        ${node.id}.vals.push(${node.id}.where[${node.id}_k]);
-                    }
-                    let ${tmp.var} = this.alasql(\`SELECT * FROM ${tmp.model} WHERE \${${node.id}.keys.join(' AND ')}\`,${node.id}.vals);\n`;
-                } else {
-                    resp.open += `let ${tmp.var} = this.alasql('SELECT * FROM ${tmp.model}', []);\n`;
-                    resp.open += `let ${node.id} = { where:{} };`;
-                }*/
+                //add belongsTo and hasMany for each join
+                for (let model in tmp.info._join) {
+                    resp.open += `${tmp.model}.belongsTo(${model}, ${context.jsDump({
+                        foreignKey: tmp.info._join[model].field
+                    })});\n`;
+                    resp.open += `${tmp.model}.hasMany(${model}, ${context.jsDump({
+                        foreignKey: tmp.info._join[model].field
+                    })});\n`;
+                }
+                // findAll code
+                resp.open += `let ${tmp.var} = await ${tmp.model}.findAll(${data}, { raw:true });\n`;
+                //resp.open += `let ${node.id}_where = ${context.jsDump(tmp.info._where,'Sequelize.')};\n`; //where for modificar/eliminar commands.
+                //console.log('PABLO debug consultar modelo',data);
+                resp.state.meta = tmp.info;
+                resp.state.model = tmp.model;
                 return resp;
             }
         },
@@ -1123,32 +1219,18 @@ module.exports = async function(context) {
                     if (link_node.text.includes('consultar modelo')==false) {
                         throw 'modificar modelo requires an arrow pointing to a consultar modelo node'
                     } else {
-                        //get linked info
-                        tmp.model = context.dsl_parser.findVariables({
-                            text: link_node.text,
-                            symbol: `"`,
-                            symbol_closing: `"`
-                        }).trim();
-                        tmp.model_where = link_node.id + '.where';
-                        //get attributes and new values as struct
-                        tmp.data = (await context.x_commands['def_struct'].func(node, { ...state, ...{
-                            as_object:true
-                        }})).open;
+                        tmp.where = (await context.x_commands['def_consultar_modelo'].func(link_node, { ...state, ...{
+                            from_modificar_modelo:true
+                        }})).state;
+                        tmp.model = tmp.where.model;
+                        tmp.where = tmp.where.meta._where;
+                        tmp.new = (await context.x_commands['def_consultar_modelo'].func(node, { ...state, ...{
+                            from_modificar_modelo:true
+                        }})).state.meta._where;
                         //code
                         if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
                         //write update statement
-                        resp.open += `let ${node.id} = { keys:[], vals:[], from:[], data:${tmp.data} };\n`;
-                        resp.open += `for (let ${node.id}_k in ${node.id}.data) {
-                            ${node.id}.keys.push(${node.id}_k+'=?');
-                            ${node.id}.vals.push(${node.id}.data[${node.id}_k]);
-                        }\n`;
-                        //write where requirements
-                        resp.open += `for (let ${node.id}_k in ${tmp.model_where}) {
-                            ${node.id}.from.push(${node.id}_k+'=?');
-                            ${node.id}.vals.push(${tmp.model_where}[${node.id}_k]);
-                        }\n`;
-                        //statement
-                        resp.open += `this.alasql(\`UPDATE ${tmp.model} SET \${${node.id}.keys.join(',')} WHERE \${${node.id}.from.join(' AND ')}\`,${node.id}.vals);\n`;
+                        resp.open += `await ${tmp.model}.update(${context.jsDump(tmp.new)},{ where:${context.jsDump(tmp.where)} });\n`;
                     }
                 } else {
                     throw 'modificar modelo requires an arrow pointing to an active consultar modelo node (cannot be cancelled)'
