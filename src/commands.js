@@ -992,35 +992,6 @@ module.exports = async function(context) {
             }
         },
 
-        'def_insertar_modelo': {
-            x_icons: 'desktop_new',
-            x_text_pattern: [`insertar modelo "*"`,`insertar modelo "*",*`],
-            x_level: '>2',
-            hint:  `Inserta los atributos (campos) y sus valores en el modelo indicado entrecomillas. 
-                    Si especifica una variable luego de la coma, asigna el resultado de la nueva insercion en esa variable.`,
-            func: async function(node, state) {
-                let resp = context.reply_template({
-                    state
-                });
-                let tmp = { var:node.id, data:{}, model:'' };
-                if (node.text.includes(',')) tmp.var=node.text.split(',').splice(-1)[0].trim();
-                tmp.model = context.dsl_parser.findVariables({
-                    text: node.text,
-                    symbol: `"`,
-                    symbol_closing: `"`
-                }).trim();
-                context.x_state.functions[resp.state.current_func].used_models[tmp.model]='';
-                //get attributes and values as struct
-                tmp.data = (await context.x_commands['def_struct'].func(node, { ...state, ...{
-                    as_object:true
-                }})).open;
-                //code
-                if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
-                resp.open += `this.alasql('INSERT INTO ${tmp.model} VALUES ?', [${tmp.data}]);\n`;
-                return resp;
-            }
-        },
-
         'def_consultar_modelo': {
             x_icons: 'desktop_new',
             x_text_contains: `consultar modelo "`,
@@ -1039,7 +1010,7 @@ module.exports = async function(context) {
                     symbol: `"`,
                     symbol_closing: `"`
                 }).trim();
-                context.x_state.functions[resp.state.current_func].used_models[tmp.model]='';
+                if (tmp.model!='') context.x_state.functions[resp.state.current_func].used_models[tmp.model]='';
                 //attributes
                 tmp.info = { _fields:[], _order:[], _join:{}, _where:{} };
                 let extract = require('extractjs')();
@@ -1204,28 +1175,41 @@ module.exports = async function(context) {
         'def_modificar_modelo': {
             x_icons: 'desktop_new',
             x_text_exact: `modificar modelo`,
-            x_not_empty: 'link',
+            //x_not_empty: 'link',
             x_level: '>2',
             hint:  `Modifica los datos de la consulta de modelo enlazada, aplicando los datos definidos en sus atributos.`,
             func: async function(node, state) {
                 let resp = context.reply_template({
-                    state
+                    state,
+                    hasChildren:false
                 });
                 let tmp = { data:{}, model:'' };
                 //if (node.link=='') return {...resp,...{ valid:false }};
                 //get target node
-                let link_node = await context.dsl_parser.getNode({ id:node.link, recurse:false });
+                let link_node = null;
+                if (node.link!='') { 
+                    link_node = await context.dsl_parser.getNode({ id:node.link, recurse:false });
+                } else if (node.nodes_raw && node.nodes_raw.length > 0) {
+                    let subnodes = await node.getNodes();
+                    link_node = subnodes[0];
+                } else {
+                    return {...resp,...{ valid:false }};
+                }
                 if (link_node && link_node.valid==true) {
                     if (link_node.text.includes('consultar modelo')==false) {
-                        throw 'modificar modelo requires an arrow pointing to a consultar modelo node'
+                        if (node.nodes_raw && node.nodes_raw.length > 0) {
+                            throw `modificar modelo requires a 'consultar modelo' child node`
+                        } else {
+                            throw `modificar modelo requires an arrow pointing to a 'consultar modelo' node`
+                        }
                     } else {
                         tmp.where = (await context.x_commands['def_consultar_modelo'].func(link_node, { ...state, ...{
-                            from_modificar_modelo:true
+                            meta:true
                         }})).state;
                         tmp.model = tmp.where.model;
                         tmp.where = tmp.where.meta._where;
                         tmp.new = (await context.x_commands['def_consultar_modelo'].func(node, { ...state, ...{
-                            from_modificar_modelo:true
+                            meta:true
                         }})).state.meta._where;
                         //code
                         if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
@@ -1248,41 +1232,74 @@ module.exports = async function(context) {
             hint:  `Elimina los datos de la consulta de modelo enlazada.`,
             func: async function(node, state) {
                 let resp = context.reply_template({
-                    state
+                    state,
+                    hasChildren:false
                 });
                 let tmp = { model:'' };
                 //if (node.link=='') return {...resp,...{ valid:false }};
                 //get target node
-                let link_node = await context.dsl_parser.getNode({ id:node.link, recurse:false });
+                let link_node = null;
+                if (node.link!='') { 
+                    link_node = await context.dsl_parser.getNode({ id:node.link, recurse:false });
+                } else if (node.nodes_raw && node.nodes_raw.length > 0) {
+                    let subnodes = await node.getNodes();
+                    link_node = subnodes[0];
+                } else {
+                    return {...resp,...{ valid:false }};
+                }
                 if (link_node && link_node.valid==true) {
                     if (link_node.text.includes('consultar modelo')==false) {
-                        throw 'eliminar modelo requires an arrow pointing to a consultar modelo node; link points to node ('+node.link+'): '+link_node.text;
+                        if (node.nodes_raw && node.nodes_raw.length > 0) {
+                            throw `eliminar modelo requires a 'consultar modelo' child node`
+                        } else {
+                            throw `eliminar modelo requires an arrow pointing to a 'consultar modelo' node; current link points to node (${node.link}): ${link_node.text}`;
+                        }
                     } else {
                         //get linked info
-                        tmp.model = context.dsl_parser.findVariables({
-                            text: link_node.text,
-                            symbol: `"`,
-                            symbol_closing: `"`
-                        }).trim();
-                        context.x_state.functions[resp.state.current_func].used_models[tmp.model]='';
-                        tmp.model_where = link_node.id + '.where';
+                        tmp.where = (await context.x_commands['def_consultar_modelo'].func(link_node, { ...state, ...{
+                            meta:true
+                        }})).state;
+                        tmp.model = tmp.where.model;
+                        tmp.where = tmp.where.meta._where;
                         //code
                         if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
-                        resp.open += `let ${node.id} = { keys:[], vals:[] };\n`;
-                        resp.open += `for (let ${node.id}_k in ${tmp.model_where}) {
-                            ${node.id}.keys.push(${node.id}_k+'=?');
-                            ${node.id}.vals.push(${tmp.model_where}[${node.id}_k]);
-                        }\n`;
-                        resp.open += `if (${node.id}.keys.length>0) {
-                            this.alasql(\`DELETE FROM ${tmp.model} WHERE \${${node.id}.keys.join(' AND ')}\`,${node.id}.vals);
-                        } else {
-                            this.alasql(\`DELETE FROM ${tmp.model}\`,[]);
-                        }\n`;
+                        resp.open += `await ${tmp.model}.destroy({ where:${context.jsDump(tmp.where)} });\n`;
                     }
                 } else {
-                    throw 'eliminar modelo requires an arrow pointing to an active consultar modelo node (cannot be cancelled)'
+                    throw `eliminar modelo requires an arrow pointing to an active 'consultar modelo' node (cannot be cancelled)`
                 }            
                 //
+                return resp;
+            }
+        },
+
+        'def_insertar_modelo': {
+            x_icons: 'desktop_new',
+            x_text_pattern: [`insertar modelo "*"`,`insertar modelo "*",*`],
+            x_level: '>2',
+            hint:  `Inserta los atributos (campos) y sus valores en el modelo indicado entrecomillas. 
+                    Si especifica una variable luego de la coma, asigna el resultado de la nueva insercion en esa variable.`,
+            func: async function(node, state) {
+                let resp = context.reply_template({
+                    state
+                });
+                let tmp = { var:node.id, data:{}, model:'' };
+                if (node.text.includes(',')) tmp.var=node.text.split(',').splice(-1)[0].trim();
+                tmp.model = context.dsl_parser.findVariables({
+                    text: node.text,
+                    symbol: `"`,
+                    symbol_closing: `"`
+                }).trim();
+                if (tmp.model!='') context.x_state.functions[resp.state.current_func].used_models[tmp.model]='';
+                //get attributes and values as struct
+                tmp.data = (await context.x_commands['def_consultar_modelo'].func(node, { ...state, ...{
+                    meta:true
+                }})).state.meta._where;
+                //code
+                if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
+                //<cfset resp.open=resp.open & "await #tmp.model#.create(" & SerializeParams(pp,tmp.usa_vars) & ").then(async function(#arguments.node.id#) {" & this.nl>
+                resp.open += `await ${tmp.model}.create(${context.jsDump(tmp.data)}).then(async function(${tmp.var}) {`;
+                resp.close += `});`;
                 return resp;
             }
         },
