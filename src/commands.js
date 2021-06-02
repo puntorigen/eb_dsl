@@ -1398,16 +1398,20 @@ module.exports = async function(context) {
                 if (obj.content.charAt(0)=='*' && obj.content.slice(-2)=='**') {
                     obj.content = getTranslatedTextVar(obj.content,false);
                 }
-                console.log('PABLO debug',obj);
                 //install packages.
                 context.x_state.npm['aws.sdk'] = '*';
-                //@todo check this output from cfc
+                //@todo check if this output from cfc is needed 2-jun21
                 //this.yml[bucket]='s3'
                 //this.recursos.cloud='AWS,'+bucket
                 //this.recursos.bucketname=bucket
                 //code
                 if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
-                resp.open += `let ${tmp.var}_ = await AWS_s3.upload({ Body:${obj.content}, Bucket:${tmp.bucket}, Key:${obj.file}, ACL:'public-read' }).promise();\n`;
+                if (typeof context.x_state.central_config.deploy=='string' && context.x_state.central_config.deploy.includes('eb:')) {
+                    resp.open += `let ${tmp.var}_ = await AWS_s3.upload({ Body:${obj.content}, Bucket:${tmp.bucket}, Key:${obj.file}, ACL:'public-read' }).promise();\n`;
+                } else {
+                    resp.open += `console.log('aws s3 dummy upload call for '+${obj.file}+'; you need to use deploy:eb to make this code real.');`;
+                    resp.open += `let ${tmp.var}_ = { Location:'dummy call' }`;
+                }
                 resp.open += `var ${tmp.var} = ${tmp.var}_.Location\n`;
                 return resp;
             }

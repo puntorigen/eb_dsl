@@ -360,7 +360,7 @@ node_modules/`;
             try {
                 //this.debug('trying to read AWS credentials:',aws_ini_file);
                 aws_ini = await fs.readFile(aws_ini_file, 'utf-8');
-                this.context.debug('AWS credentials:',aws_ini);
+                //this.context.debug('AWS credentials:',aws_ini);
             } catch (err_reading) {}
             // 
             if (this.context.x_state.config_node.aws) {
