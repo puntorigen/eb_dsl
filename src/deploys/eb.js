@@ -355,7 +355,8 @@ node_modules/`;
             // read existing AWS credentials if they exist
             let os = require('os');
             let aws_ini = '';
-            let aws_ini_file = path.join(os.homedir(), '/.aws/') + 'credentials';
+            let aws_folder = path.join(os.homedir(), '/.aws/');
+            let aws_ini_file = path.join(aws_folder,'credentials');
             try {
                 //this.debug('trying to read AWS credentials:',aws_ini_file);
                 aws_ini = await fs.readFile(aws_ini_file, 'utf-8');
@@ -380,7 +381,15 @@ node_modules/`;
                 }, { section: 'default' });
                 this.context.debug('Setting .aws/credentials from config node');
                 // save as .aws/credentials (ini file)
-                await fs.writeFile(aws_ini_file, to_ini, 'utf-8');
+                try {
+                    await fs.writeFile(aws_ini_file, to_ini, 'utf-8');
+                } catch(errdir) {
+                    //if fails, maybe target dir doesn't exist
+                    try {
+                        await fs.mkdir(aws_folder, { recursive:true });
+                    } catch(errdir2) {
+                    }
+                }
 
             } else if (aws_ini != '') {
                 // if DSL doesnt define AWS credentials, use the ones defined within the local system.
@@ -405,11 +414,11 @@ node_modules/`;
         //aws config requirements
         if (this.context.x_state.npm['aws-sdk']) {
             let aws_data = {
-                accessKeyId: this.context.x_state.central_config.aws_access,
-                secretAccessKey: this.context.x_state.central_config.aws_secret
+                accessKeyId: this.context.x_state.config_node.aws.access,
+                secretAccessKey: this.context.x_state.config_node.aws.secret
             };
-            if (this.context.x_state.central_config.aws_region) {
-                aws_data.region = this.context.x_state.central_config.aws_region;
+            if (this.context.x_state.config_node.aws.region) {
+                aws_data.region = this.context.x_state.config_node.aws.region;
             }
             resp.push(`const AWS = require('aws-sdk');
             AWS.config.update(${this.context.jsDump(aws_data)});

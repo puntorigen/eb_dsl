@@ -1369,6 +1369,50 @@ module.exports = async function(context) {
             }
         },
 
+        'def_archivar': {
+            x_icons: 'desktop_new',
+            x_text_pattern: [`archivar "*",*`,`s3:guardar "*",*`],
+            x_level: '>3',
+            attributes_aliases: {
+                'file':         'nombre,filename,name,file,archivo',
+                'content':      'content,contenido'                
+            },
+            x_watch: `x_state.central_config.deploy`,
+            hint: 'Crea un archivo en el bucket S3 indicado, con los contenidos de sus atributos. Retorna objeto de S3, con Location si exitoso.',
+            func: async function(node, state) {
+                let resp = context.reply_template({
+                    state
+                });
+                let tmp = { var:node.id };
+                tmp.var=node.text.split(',').splice(-1)[0].trim();
+                tmp.bucket = context.dsl_parser.findVariables({
+                    text: node.text,
+                    symbol: `"`,
+                    symbol_closing: `"`
+                }).trim();
+                node.attributes = aliases2params('def_archivar', node, false, 'this.');
+                let obj = await context.x_commands['def_struct'].func(node, { ...state, ...{
+                    as_object:true
+                }});
+                obj = obj.state.object;
+                if (obj.content.charAt(0)=='*' && obj.content.slice(-2)=='**') {
+                    obj.content = getTranslatedTextVar(obj.content,false);
+                }
+                console.log('PABLO debug',obj);
+                //install packages.
+                context.x_state.npm['aws.sdk'] = '*';
+                //@todo check this output from cfc
+                //this.yml[bucket]='s3'
+                //this.recursos.cloud='AWS,'+bucket
+                //this.recursos.bucketname=bucket
+                //code
+                if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
+                resp.open += `let ${tmp.var}_ = await AWS_s3.upload({ Body:${obj.content}, Bucket:${tmp.bucket}, Key:${obj.file}, ACL:'public-read' }).promise();\n`;
+                resp.open += `var ${tmp.var} = ${tmp.var}_.Location\n`;
+                return resp;
+            }
+        },
+
         //def_consultar_web
         'def_consultar_web': {
             x_icons: 'desktop_new',

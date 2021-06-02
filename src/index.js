@@ -952,7 +952,8 @@ var ${file} = require('../models/${file}');
             //requires
             let requires = [];
             if (this.deploy_module.codeForModel) {
-                requires = [...requires,...this.deploy_module.codeForModel(express.models[file])];
+                let deploy_require = await this.deploy_module.codeForModel(express.models[file]);
+                requires = [...requires,...deploy_require];
             }
             // add express models imports
             for (let imp in express.models[file].imports) {
