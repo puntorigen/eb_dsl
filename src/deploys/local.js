@@ -61,4 +61,23 @@ export default class local extends base_deploy {
         return errors;
     }
 
+    async codeForModel(model) {
+        //express = {models,routes}
+        //returns array with records of lines of code
+        let resp = [];
+        //aws config requirements
+        if (this.context.x_state.npm['aws-sdk']) {
+            let aws_data = {
+                accessKeyId: this.context.x_state.config_node.aws.access,
+                secretAccessKey: this.context.x_state.config_node.aws.secret
+            };
+            if (this.context.x_state.config_node.aws.region) {
+                aws_data.region = this.context.x_state.config_node.aws.region;
+            }
+            resp.push(`const AWS = require('aws-sdk');
+            AWS.config.update(${this.context.jsDump(aws_data)});
+            const AWS_s3 = new AWS.S3();`);
+        }
+        return resp;
+    }
 }
