@@ -1796,9 +1796,8 @@ module.exports = async function(context) {
                 }
                 params.iterator = params.iterator   .replaceAll('$variables.','this.')
                                                     .replaceAll('$vars.','this.')
-                                                    .replaceAll('$params.','this.')
-                                                    .replaceAll('$store.','this.$store.state.');
-                context.x_state.pages[state.current_page].imports['underscore'] = '_';
+                                                    .replaceAll('$params.','this.');
+                context.x_state.functions[resp.state.current_func].imports['underscore'] = '_';
                 //search consultar web nodes
                 if (!params[':each'] && sons.length>0) {
                     for (let x of sons) {
