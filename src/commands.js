@@ -1598,7 +1598,7 @@ module.exports = async function(context) {
                     simple:true,
                     proxy:isProxySon,
                     progress:true,
-                    axios_call:'$axios',
+                    axios_call:'axios',
                     config: {
                         method:'get',
                         url:'',
