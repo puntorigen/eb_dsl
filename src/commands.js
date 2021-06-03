@@ -664,49 +664,6 @@ module.exports = async function(context) {
         // *************************
 
         //..scripts..
-        'def_responder': {
-            x_icons: 'desktop_new',
-            //x_text_pattern: `responder "*"`,
-            x_text_contains: `responder "`,
-            x_or_hasparent: 'def_variables,def_event_element,def_event_method',
-            x_level: '>3',
-            hint: 'Emite una respuesta para la variable de tipo funcion o evento :rules',
-            func: async function(node, state) {
-                let resp = context.reply_template({
-                    state
-                });
-                if (node.text_note != '') resp.open = `// ${node.text_note.cleanLines()}\n`;
-                let text = context.dsl_parser.findVariables({
-                    text: node.text,
-                    symbol: `"`,
-                    symbol_closing: `"`
-                });
-                // tests return types
-                if (text.includes('**') && node.icons.includes('bell')) {
-                    let new_vars = getTranslatedTextVar(text);
-                    resp.open += `return ${new_vars};\n`;
-                } else if (text.includes('$')) {
-                    text = text.replaceAll('$params.', 'this.')
-                        .replaceAll('$variables.', 'this.');
-                    resp.open += `return ${text};\n`;
-                } else if (text.includes('assets:')) {
-                    text = context.getAsset(text, 'js');
-                    resp.open += `return ${text};\n`;
-                } else if (text == '') {
-                    resp.open += `return '';\n`;
-                } else if (text.charAt(0) == '(' && text.slice(-1) == ')') {
-                    text = text.slice(1).slice(0, -1);
-                    resp.open += `return ${text};\n`;
-                } else {
-                    if (context.x_state.central_config.idiomas && context.x_state.central_config.idiomas.includes(',')) {
-                        // @TODO add support for i18m
-                    } else {
-                        resp.open += `return '${text}';\n`;
-                    }
-                }
-                return resp;
-            }
-        },
 
         'def_struct': {
             x_icons: 'desktop_new',
@@ -1518,6 +1475,104 @@ module.exports = async function(context) {
                 if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
                 resp.open += `let ${tmp.var}_type = require('file-type');\n`;
                 resp.open += `let ${tmp.var} = await ${tmp.var}_type.fromBuffer(${tmp.source});`;
+                return resp;
+            }
+        },
+
+        'def_async_parallel': {
+            x_icons: 'desktop_new',
+            x_text_contains: 'paralelo,,',
+            x_level: '>3',
+            hint: 'Representa la ejecución paralela de sus nodos hijos como funciones independientes, y la recolección total de sus resultados en una sola variable definida luego de una coma.',
+            func: async function(node, state) {
+                let resp = context.reply_template({
+                    state
+                });
+                let tmp = { var:node.id };
+                tmp.var=node.text.split(',').splice(-1)[0].trim();
+                //code
+                if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
+                // build child nodes
+                resp.state.parallel = `${node.id}_funcs`;
+                resp.open += `let ${resp.state.parallel} = [];\n`;
+                resp.close += `let ${node.id}_ = await Promise.all(${resp.state.parallel});\n`;
+                if (tmp.var.includes('.')==false) resp.close += `let `;
+                resp.close += `${tmp.var} = {};\n`;
+                //write responses
+                let sons = await node.getNodes(), count=0;
+                for (let x of sons) {
+                    if (x.valid && x.valid==true) {
+                        resp.close += `${tmp.var}.${x.text.trim()} = ${node.id}_[${count}];\n`;
+                        count+=1;
+                    }
+                }
+                resp.close += ``;
+                return resp;
+            }
+        },
+
+        'def_async_parallel_son': {
+            x_icons: 'xmag',
+            x_all_hasparent: 'def_async_parallel',
+            x_level: '>3',
+            hint: 'Hijo de un nodo paralelo, entrega la ejecución de su hijo en el nombre del nodo.',
+            func: async function(node, state) {
+                let resp = context.reply_template({
+                    state
+                });
+                //code
+                //context.x_state.functions[resp.state.current_func].used_models[tmp.model]
+                if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
+                let used_models = Object.keys(context.x_state.functions[resp.state.current_func].used_models);
+                resp.open += `${resp.state.parallel}.push(`;
+                if (used_models.length>0) {
+                    resp.open += `async function(params,${used_models.join(',')}) {\n`;
+                    resp.close += `}(params,${used_models.join(',')})`;
+                } else {
+                    resp.open += `async function(params) {\n`;
+                    resp.close += `}(params)`;
+                }
+                resp.close += `);\n`;
+                resp.state.name = node.text.trim();
+                return resp;
+            }
+        },
+
+        'def_async_responder': {
+            x_icons: 'desktop_new',
+            x_text_contains: `responder "`,
+            x_or_hasparent: 'def_async_parallel_son',
+            x_level: '>3',
+            hint: 'Emite una respuesta para la variable de tipo funcion o evento :rules',
+            func: async function(node, state) {
+                let resp = context.reply_template({
+                    state
+                });
+                if (node.text_note != '') resp.open = `// ${node.text_note.cleanLines()}\n`;
+                let text = context.dsl_parser.findVariables({
+                    text: node.text,
+                    symbol: `"`,
+                    symbol_closing: `"`
+                });
+                // tests return types
+                if (text.includes('**') && node.icons.includes('bell')) {
+                    let new_vars = getTranslatedTextVar(text);
+                    resp.open += `return ${new_vars};\n`;
+                } else if (text.includes('$')) {
+                    text = text.replaceAll('$params.', 'this.')
+                        .replaceAll('$variables.', 'this.');
+                    resp.open += `return ${text};\n`;
+                /*} else if (text.includes('assets:')) {
+                    text = context.getAsset(text, 'js');
+                    resp.open += `return ${text};\n`;*/
+                } else if (text == '') {
+                    resp.open += `return '';\n`;
+                } else if (text.charAt(0) == '(' && text.slice(-1) == ')') {
+                    text = text.slice(1).slice(0, -1);
+                    resp.open += `return ${text};\n`;
+                } else {
+                    resp.open += `return '${text}';\n`;
+                }
                 return resp;
             }
         },
