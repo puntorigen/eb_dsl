@@ -293,13 +293,13 @@ module.exports = async function(context) {
                 }
                 resp.open += `{ ${resp.state.current_func}_init }\n`; //placeholder for used (to be defined later) db connections
                 if (context.x_state.functions[resp.state.current_func].return!='') {
-                    resp.open +=   `if (asfunc) {
+                    resp.close +=  `if (asfunc) {
                                         return ${context.x_state.functions[resp.state.current_func].return};\n
                                     } else {
                                         res.send(${context.x_state.functions[resp.state.current_func].return});
                                     }\n`;
                 }
-                resp.close = `}\n`;
+                resp.close += `}\n`;
                 context.x_state.functions[resp.state.current_func].code=resp;
                 return resp;
             }
@@ -759,7 +759,7 @@ module.exports = async function(context) {
                     delete resp.state.as_object;
                 } else {
                     if (node.text_note != '') resp.open = `// ${node.text_note.cleanLines()}\n`;
-                    resp.open += `let ${tmp.var.trim()} = ${context.jsDump(attrs).replaceAll("'`","`").replaceAll("`'","`")};\n`;
+                    resp.open += `var ${tmp.var.trim()} = ${context.jsDump(attrs).replaceAll("'`","`").replaceAll("`'","`")};\n`;
                 }
                 return resp;
             }
@@ -1494,7 +1494,7 @@ module.exports = async function(context) {
 
         'def_tipo_binario': {
             x_icons: 'desktop_new',
-            x_text_pattern: [`tipo de binario "*",*`],
+            x_text_pattern: [`tipo de binario "*",*`,`detectar tipo de binario "*",*`],
             x_level: '>3',
             hint: 'Detecta el tipo de variable binaria dada, y responde una struct con los campos: ext y mimetype.',
             func: async function(node, state) {
