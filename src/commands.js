@@ -1717,8 +1717,6 @@ module.exports = async function(context) {
                 let resp = context.reply_template({
                     state
                 });
-                if (!state.from_consultar_web) return {...resp,...{ valid:false }};
-                if (!state.from_script) return {...resp,...{ valid:false }};
                 //code
                 if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
                 resp.open += `${state.from_consultar_web}.onUploadProgress = function(evento) {\n`;
@@ -1737,8 +1735,6 @@ module.exports = async function(context) {
                 let resp = context.reply_template({
                     state
                 });
-                if (!state.from_consultar_web) return {...resp,...{ valid:false }};
-                if (!state.from_script) return {...resp,...{ valid:false }};
                 //code
                 if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
                 resp.open += `${state.from_consultar_web}.onDownloadProgress = function(evento) {\n`;
@@ -1760,10 +1756,6 @@ module.exports = async function(context) {
             func: async function(node, state) {
                 let resp = context.reply_template({ state });
                 let tmp = { key:'', has_await:false, query:node.text, target:'' };
-                if (!state.from_script && !state.get_params) {
-                    resp.valid=false;
-                    return resp;
-                }
                 if (tmp.query.includes('$store.')) tmp.query = tmp.query.replaceAll('$store.','$store.state.');
                 if (tmp.query.includes(',')) tmp.key=tmp.query.split(',').splice(-1)[0].trim();
                 tmp.iterator = context.dsl_parser.findVariables({
@@ -1863,7 +1855,6 @@ module.exports = async function(context) {
             hint: 'Crea una variable con el contenido HTML indicado en la nota del nodo.',
         	func: async function(node, state) {
                 let resp = context.reply_template({ state });
-                if (!state.from_script) return {...resp,...{ valid:false }};
                 // attrs
                 let attrs = {...{ html:true, asis:false },...aliases2params('def_guardar_nota', node, false, 'this.')};
                 delete attrs.refx;
@@ -1914,7 +1905,6 @@ module.exports = async function(context) {
                    Si hay una variable definida, se crea una nueva instancia del array con los campos nuevos, en caso contrario se modifican los valores de la variable original.`,
         	func: async function(node, state) {
                 let resp = context.reply_template({ state });
-                if (!state.from_script) return {...resp,...{ valid:false }};
                 //get vars and attrs
                 let tmp = { var:'' };
                 if (node.text.includes(',')) tmp.var = node.text.split(',').pop().trim();
@@ -1986,7 +1976,6 @@ module.exports = async function(context) {
             hint: `Crea una copia de la variable indicada, en la variable luego de la coma.`,
         	func: async function(node, state) {
                 let resp = context.reply_template({ state });
-                if (!state.from_script) return {...resp,...{ valid:false }};
                 //get vars and attrs
                 let tmp = { var:'', original:'' };
                 if (node.text.includes(',')) tmp.var = node.text.split(',').pop().trim();
