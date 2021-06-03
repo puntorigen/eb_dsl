@@ -1492,6 +1492,36 @@ module.exports = async function(context) {
             }
         },
 
+        'def_tipo_binario': {
+            x_icons: 'desktop_new',
+            x_text_pattern: [`tipo de binario "*",*`],
+            x_level: '>3',
+            hint: 'Detecta el tipo de variable binaria dada, y responde una struct con los campos: ext y mimetype.',
+            func: async function(node, state) {
+                let resp = context.reply_template({
+                    state
+                });
+                let tmp = { var:node.id };
+                tmp.var=node.text.split(',').splice(-1)[0].trim();
+                tmp.source = context.dsl_parser.findVariables({
+                    text: node.text,
+                    symbol: `"`,
+                    symbol_closing: `"`
+                }).trim();
+                if (tmp.source.includes('**')==true && node.icons.includes('bell')) {
+                    tmp.source = getTranslatedTextVar(tmp.source);
+                } else {
+                    tmp.source = `'${tmp.source}'`;
+                }
+                //code
+                context.x_state.npm['file-type'] = '*';
+                if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
+                resp.open += `let ${tmp.var}_type = require('file-type');\n`;
+                resp.open += `let ${tmp.var} = await ${tmp.var}_type.fromBuffer(${tmp.source});`;
+                return resp;
+            }
+        },
+
         //def_consultar_web
         'def_consultar_web': {
             x_icons: 'desktop_new',
