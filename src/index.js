@@ -920,7 +920,7 @@ var ${file} = require('../models/${file}');
                 if (express.models[file].functions[func].param_doc.return) {
                     let p_type = ccase.pascalize(express.models[file].functions[func].param_doc.return.type);
                     let p_desc = express.models[file].functions[func].param_doc.return.desc.trim();
-                    doc += `* @return ${p_type} ${p_desc}\n`;
+                    doc += `* @return {${p_type}} ${p_desc}\n`;
                 } else if (_jsdoc.doc.includes('@return')==false) {
                     doc += `* @return {object}\n`;
                 }
@@ -1275,7 +1275,7 @@ var ${file} = require('../models/${file}');
                 },
                 'INTEGER': 'type.INTEGER',
                 'STRING': 'type.STRING',
-                'FLOAT': 'type.FLOAR',
+                'FLOAT': 'type.FLOAT',
                 'BOOLEAN': 'type.BOOLEAN',
                 'DATEONLY': 'type.DATE',
                 'DATETIME': 'type.DATE',

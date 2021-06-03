@@ -74,7 +74,7 @@ export default class base_deploy {
             spinner.succeed('Project built successfully');
         } catch(nb) { 
             npm.build = nb; 
-            spinner.fail('NUXT build failed');
+            spinner.fail('Build failed');
             this.context.x_console.out({ message:`Building NodeJS again to show error in console`, color:'red' });
             //build again with output redirected to console, to show it to user
             try {
