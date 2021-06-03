@@ -1596,7 +1596,7 @@ module.exports = async function(context) {
                     var:node.id,
                     meta:false,
                     simple:true,
-                    proxy:isProxySon,
+                    proxy:false,
                     progress:true,
                     axios_call:'axios',
                     config: {
