@@ -141,10 +141,10 @@ export default class eb_dsl extends concepto {
         this.x_state.npm['postman-request']='*';
         this.x_state.npm['request']='*';
         this.x_state.npm['wait.for']='*';
+        this.x_state.npm['serve-favicon']='*'; // favicon support
 
         // FAVICON
         if (this.x_state.config_node.favicon) {
-            this.x_state.npm['serve-favicon']='*'; // favicon support
             // copy icon to static dir
             let path = require('path');
             let source = path.join(this.x_state.dirs.base, this.x_state.config_node.favicon);
