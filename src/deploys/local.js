@@ -51,7 +51,7 @@ export default class local extends base_deploy {
         spinner.start('Deploying local instance');
         try {
             //launch in a new terminal
-            await this.launchTerminal('npm',['run','_dev'],this.context.x_state.dirs.app);
+            await this.launchTerminal('npm',['run','dev'],this.context.x_state.dirs.app);
             //results.git_add = await spawn('npm',['run','dev'],{ cwd:this.x_state.dirs.app });
             spinner.succeed('NodeJS Express launched successfully');
         } catch(gi) { 

@@ -186,7 +186,7 @@ export default class eb_dsl extends concepto {
         // set config keys as ENV accesible variables (ex. $config.childnode.attributename)
         for (let key in this.x_state.config_node) {
             // omit special config 'reserved' (aurora,vpc,aws) node keys
-            if (!['aurora', 'vpc', 'aws','copiar'].includes(key) && typeof this.x_state.config_node[key] === 'object') {
+            if (!['vpc', 'aws','copiar'].includes(key) && typeof this.x_state.config_node[key] === 'object') {
                 Object.keys(this.x_state.config_node[key]).map(function(attr) {
                     this.x_state.envs[`config.${key}.${attr}`] = `process.env.${(key+'_'+attr).toUpperCase()}`;
                 }.bind(this));
@@ -291,9 +291,9 @@ ${this.x_state.dirs.compile_folder}/secrets/`;
         if (this.x_state.central_config.readme!='') {        
             let set_envs = [];
             for (let key in this.x_state.config_node) {
-                if (!['aurora', 'vpc', 'aws','copiar'].includes(key) && typeof this.x_state.config_node[key] === 'object') {
+                if (!['vpc', 'aws','copiar'].includes(key) && typeof this.x_state.config_node[key] === 'object') {
                     Object.keys(this.x_state.config_node[key]).map(function(attr) {
-                        if (key.charAt(0)!=':') {
+                        if (key.charAt(0)!=':' && attr.charAt(0)!=':') {
                             set_envs.push(`${key.toUpperCase()}_${attr.toUpperCase()}`);
                         }
                     }.bind(this));
@@ -423,7 +423,8 @@ function onListening() {
             main: 'app.js',
             scripts: {
                 start: './app',
-                _dev: 'nodemon ./app.js',
+                dev: 'nodemon ./app.js',
+                build: 'npm run _doc',
                 _doc: 'jsdoc ./routes -c ./jsdoc.json -R ./README.md'
             },
             dependencies: {},
@@ -444,12 +445,12 @@ function onListening() {
             data.homepage = this.x_state.central_config[':git'];
         }
         if (this.x_state.central_config[':keywords']) data.keywords = this.x_state.central_config[':keywords'].split(',');
-        // set port and env variables to script _dev
+        // set port and env variables to script dev
         let set_envs = [`APP_PORT=${this.x_state.central_config.port}`,`CLUSTER=1`];
         for (let key in this.x_state.config_node) {
-            if (!['aurora', 'vpc', 'aws','copiar'].includes(key) && typeof this.x_state.config_node[key] === 'object') {
+            if (!['vpc', 'aws','copiar'].includes(key) && typeof this.x_state.config_node[key] === 'object') {
                 Object.keys(this.x_state.config_node[key]).map(function(attr) {
-                    if (key.charAt(0)!=':') {
+                    if (key.charAt(0)!=':' && attr.charAt(0)!=':') {
                         set_envs.push(`${key.toUpperCase()}_${attr.toUpperCase()}=${this.x_state.config_node[key][attr]}`);
                     }
                 }.bind(this));
@@ -461,7 +462,7 @@ function onListening() {
             set_envs = await this.deploy_module.setEnvs(set_envs);
         }
         // add to package script _dev
-        data.scripts._dev = set_envs.join(' ') + ' ' + data.scripts._dev;
+        data.scripts.dev = set_envs.join(' ') + ' ' + data.scripts.dev;
         //
         //add dependencies
         for (let pack in this.x_state.npm) {

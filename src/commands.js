@@ -1353,7 +1353,7 @@ module.exports = async function(context) {
                 }});
                 obj = obj.state.object;
                 //install packages.
-                context.x_state.npm['aws.sdk'] = '*';
+                context.x_state.npm['aws-sdk'] = '*';
                 //@todo check if this output from cfc is needed 2-jun21
                 //this.yml[bucket]='s3'
                 //this.recursos.cloud='AWS,'+bucket
@@ -1403,7 +1403,7 @@ module.exports = async function(context) {
                 }});
                 obj = obj.state.object;
                 //install packages.
-                context.x_state.npm['aws.sdk'] = '*';
+                context.x_state.npm['aws-sdk'] = '*';
                 //code
                 if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
                 if (typeof context.x_state.central_config.deploy=='string' && 
