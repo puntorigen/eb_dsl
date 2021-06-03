@@ -1435,7 +1435,6 @@ module.exports = async function(context) {
                     state
                 });
                 let tmp = { var:node.id };
-                tmp.var=node.text.split(',').splice(-1)[0].trim();
                 tmp.bucket = context.dsl_parser.findVariables({
                     text: node.text,
                     symbol: `"`,
@@ -1460,6 +1459,35 @@ module.exports = async function(context) {
                 } else {
                     resp.open += `console.log('aws s3 dummy delete call for '+${obj.file}+'; you need to use deploy:eb to make this code real.');`;
                 }
+                return resp;
+            }
+        },
+
+        'def_convertir_binario': {
+            x_icons: 'desktop_new',
+            x_text_pattern: [`convertir en binario "*",*`],
+            x_level: '>3',
+            hint: 'Convierte una variable base64 en un buffer binario, y lo deja en la variable dada.',
+            func: async function(node, state) {
+                let resp = context.reply_template({
+                    state
+                });
+                let tmp = { var:node.id };
+                tmp.var=node.text.split(',').splice(-1)[0].trim();
+                tmp.source = context.dsl_parser.findVariables({
+                    text: node.text,
+                    symbol: `"`,
+                    symbol_closing: `"`
+                }).trim();
+                if (tmp.source.includes('**')==true && node.icons.includes('bell')) {
+                    tmp.source = getTranslatedTextVar(tmp.source);
+                } else {
+                    tmp.source = `'${tmp.source}'`;
+                }
+                //code
+                context.x_state.npm['data-uri-to-buffer'] = '*';
+                if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
+                resp.open += `let ${tmp.var} = require('data-uri-to-buffer')(${tmp.source});`;
                 return resp;
             }
         },
