@@ -1955,6 +1955,49 @@ module.exports = async function(context) {
             }
         },
 
+        'def_puppeteer': {
+            x_icons: 'desktop_new',
+            x_text_pattern: `+(puppeteer|navegador)*`,
+            x_level: '>2',
+            attributes_aliases: {
+                'headless':         'invisible,headless'
+            },
+            x_watch: `x_state.central_config.deploy`,
+            hint: 'Crea una instancia de puppeteer para automatizar acciones de un navegador Chrome (por defecto es invisible o headless).\nDevuelve instancia de browser.',
+            func: async function(node, state) {
+                let resp = context.reply_template({
+                    state
+                });
+                //attributes
+                let attrs = aliases2params('def_puppeteer', node, false, 'this.');
+                let tmp = {};
+                if (node.text.includes(',')) tmp.var=node.text.split(',').splice(-1)[0].trim();
+                //deploy dependant
+                if (context.x_state.central_config.deploy.includes('eb:')) {
+                    attrs.executablePath = '/usr/bin/google-chrome-stable';
+                    attrs.headless = true;
+                    attrs.sandbox = false;
+                    tmp.lib = 'puppeteer-core';
+                    context.x_state.npm['puppeteer-core'] = '*';
+                } else {
+                    tmp.lib = 'puppeteer';
+                    context.x_state.npm['puppeteer'] = '*';
+                    context.x_state.npm['puppeteer-core'] = '*';                    
+                }
+                //general conditions
+                if (attrs.sandbox && attrs.sandbox==false) {
+                    attrs.args = ['--no-sandbox','--disable-setuid-sandbox'];
+                    delete attrs.sandbox;
+                }
+                //code
+                if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
+                resp.open += `let ${node.id} = require('${tmp.lib}');\n`;
+                if (tmp.var) resp.open += `let ${tmp.var} = `;
+                resp.open += `await ${node.id}.launch(${context.jsDump(attrs)});\n`;
+                return resp
+            }
+        },
+
         'def_xcada_registro': {
             x_icons: 'penguin',
             x_text_contains: `por cada registro en`,
