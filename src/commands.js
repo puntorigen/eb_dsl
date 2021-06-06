@@ -2222,6 +2222,85 @@ module.exports = async function(context) {
             }
         },
 
+        /* IMAGE X_COMMANDS */
+        'def_imagen_nueva': {
+            x_icons: 'desktop_new',
+            x_text_pattern: `+(imagen|jimp):+(nueva|new),*`,
+            x_level: '>2',
+            attributes_aliases: {
+                'width':            'ancho,width',
+                'height':           'alto,height',
+                'color':            'bgcolor,color'
+            },
+            hint:  `Crea una nuevo objeto imagen (jimp) con las caracteristicas de sus atributos, y la asigna en la variable dada despues de la coma. El color de fondo del nodo, define el color de fondo de la imagen.`,
+            func: async function(node, state) {
+                let resp = context.reply_template({ state });
+                let tmp = {};
+                tmp.var=node.text.split(',').splice(-1)[0].trim();
+                //attrs
+                let attrs = aliases2params('def_imagen_nueva',node);
+                if (!attrs.width) attrs.width=200;
+                if (!attrs.height) attrs.height=200;
+                if (node.icons.includes('bell')) {
+                    if (typeof attrs.width=='string' && attrs.width.includes('**')) {
+                        attrs.width = getTranslatedTextVar(attrs.width,false);
+                    }
+                    if (typeof attrs.height=='string' && attrs.height.includes('**')) {
+                        attrs.height = getTranslatedTextVar(attrs.height,false);
+                    }
+                }
+                //install jimp
+                context.x_state.npm['jimp'] = '0.6.4';
+                context.x_state.functions[resp.state.current_func].imports['jimp'] = 'jimp';
+                //code
+                if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
+                resp.open += `var ${tmp.var} = new jimp(${attrs.width},${attrs.height})`;
+                if (attrs.color) {
+                    resp.open += `,jimp.rgbaToInt(${attrs.color})`;
+                } else if (node.bgcolor!='') {
+                    resp.open += `,0x${node.bgcolor.replaceAll('#','').toUpperCase()}FF`;
+                }
+                resp.open += `);\n`;
+                return resp;
+            }
+        },
+
+        'def_imagen_leer': {
+            x_icons: 'desktop_new',
+            x_text_pattern: `+(imagen|jimp):+(leer|read),*`,
+            x_level: '>2',
+            hint:  `Lee el objeto binario/ruta definido en las comillas, y lo asigna como objeto imagen en la variable dada despues de la coma.`,
+            func: async function(node, state) {
+                let resp = context.reply_template({ state });
+                let tmp = {};
+                tmp.var = node.text.split(',').splice(-1)[0].trim();
+                tmp.text = context.dsl_parser.findVariables({
+                    text: node.text,
+                    symbol: `"`,
+                    symbol_closing: `"`
+                }).trim();
+                //attrs
+                let attrs = aliases2params('def_imagen_leer',node);
+                if (node.icons.includes('bell') && tmp.text.includes('**') && tmp.text.includes('../')==false) {
+                    tmp.text = getTranslatedTextVar(tmp.text,false);
+                } else if (tmp.text.includes('../')) {
+                    if (node.icons.includes('bell') && tmp.text.includes('**')) {
+                        tmp.text = `require('path').resolve(__dirname,${getTranslatedTextVar(tmp.text,false)})`;
+                    } else {
+                        tmp.text = `require('path').resolve(__dirname,'${tmp.text}');`;
+                    }
+                }
+                //install jimp
+                context.x_state.npm['jimp'] = '0.6.4';
+                context.x_state.functions[resp.state.current_func].imports['jimp'] = 'jimp';
+                //code
+                if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
+                resp.open += `var ${tmp.var} = await jimp.read(${tmp.text});\n`;
+                return resp;
+            }
+        },
+
+        /* END IMAGE X_COMMANDS */
         'def_xcada_registro': {
             x_icons: 'penguin',
             x_text_contains: `por cada registro en`,
