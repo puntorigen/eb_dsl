@@ -2267,7 +2267,7 @@ module.exports = async function(context) {
 
         'def_imagen_leer': {
             x_icons: 'desktop_new',
-            x_text_pattern: `+(imagen|jimp):+(leer|read),*`,
+            x_text_pattern: `+(imagen|jimp):+(leer|read) "*",*`,
             x_level: '>2',
             hint:  `Lee el objeto binario/ruta definido en las comillas, y lo asigna como objeto imagen en la variable dada despues de la coma.`,
             func: async function(node, state) {
@@ -2302,7 +2302,7 @@ module.exports = async function(context) {
 
         'def_imagen_escalar': {
             x_icons: 'desktop_new',
-            x_text_pattern: `+(imagen|jimp):+(escalar|scale)`,
+            x_text_pattern: `+(imagen|jimp):+(escalar|scale) "*"`,
             x_level: '>2',
             attributes_aliases: {
                 width:      'ancho,width',
@@ -2354,6 +2354,81 @@ module.exports = async function(context) {
                 resp.open += `await ${tmp.text}.resize(${attrs.width},${attrs.height}`;
                 if (attrs.algo) resp.open += `,${attrs.algo}`;
                 resp.open += `);\n`;
+                return resp;
+            }
+        },
+
+        'def_imagen_cambiar_color': {
+            x_icons: 'desktop_new',
+            x_text_pattern: `+(imagen|jimp):+(cambiar|change) color "*"`,
+            x_level: '>2',
+            attributes_aliases: {
+                source:     'de,from,source,desde',
+                target:     'a,por,to,target,hasta',
+                delta:      'delta,margen'
+            },
+            hint:  `Reemplaza el color indicado (de) por el nuevo en la imagen dada.`,
+            func: async function(node, state) {
+                let resp = context.reply_template({ state });
+                let tmp = {};
+                tmp.text = context.dsl_parser.findVariables({
+                    text: node.text,
+                    symbol: `"`,
+                    symbol_closing: `"`
+                }).trim();
+                //attrs
+                let attrs = aliases2params('def_imagen_cambiar_color',node);
+                if (node.icons.includes('bell') && tmp.text.includes('**') && tmp.text.includes('../')==false) {
+                    tmp.text = getTranslatedTextVar(tmp.text,false);
+                }
+                //map special values
+                Object.keys(attrs).map(function(key) {
+                    if (attrs[key]=='alpha') {
+                        attrs[key]='#00000000';
+                        attrs['type']='hex';
+                        attrs['delta']=10;
+                    } else if (node.icons.includes('bell') && attrs[key].includes('**')) {
+                        attrs[key] = getTranslatedTextVar(attrs[key],true);
+                    }
+                });
+                if (attrs.source) {
+                    attrs.targetColor = attrs.source;
+                    if (attrs.source.includes('#')) {
+                        attrs.type = 'hex';
+                    } else if (attrs.source.includes(',')) {
+                        attrs.type = 'rgb';                        
+                        attrs.targetColor = attrs.source.split(',');
+                    }
+                    delete attrs.source;
+                }
+                if (attrs.target) {
+                    attrs.replaceColor = attrs.target;
+                    if (attrs.target.includes('#')) {
+                        attrs.type = 'hex';
+                    } else if (attrs.target.includes(',')) {
+                        attrs.type = 'rgb';
+                        attrs.replaceColor = attrs.target.split(',');
+                    } 
+                    delete attrs.target;
+                }
+                //build data object
+                let data = {
+                    image:tmp.text,
+                    deltaE:attrs.delta,
+                    colors: {
+                        type:attrs.type,
+                        targetColor:attrs.targetColor,
+                        replaceColor:attrs.replaceColor
+                    }
+                };
+                //install jimp
+                context.x_state.npm['jimp'] = '0.6.4';
+                context.x_state.functions[resp.state.current_func].imports['jimp'] = 'jimp';
+                context.x_state.npm['replace-color'] = '2.1.0';
+                context.x_state.functions[resp.state.current_func].imports['replace-color'] = 'replacecolor';
+                //code
+                if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
+                resp.open += `${tmp.text} = await replacecolor(${context.jsDump(data)});\n`;
                 return resp;
             }
         },
