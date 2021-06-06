@@ -631,7 +631,11 @@ function onListening() {
                 express_models[file].imports[import_name] = import_name;
             }
             // add pathlen key for later struct sort
-            express_models[file].functions[key].pathlen = this.x_state.functions[key].path.length;
+            if (typeof this.x_state.functions[key].path == 'string') {
+                express_models[file].functions[key].pathlen = this.x_state.functions[key].path.length;
+            } else {
+                // this can happen when cache had a path that now is cancelled
+            }
             if (express_models[file].functions[key].visible==true) {
                 routes.raw[`/${file}/`] = file;
             }
@@ -851,12 +855,16 @@ function onListening() {
             // get unique sub-routes
             let unique = {};
             for (let func of express.models[file].ordered_functions) {
-                let path = express.models[file].functions[func].path.trim().split('/');
-                path.pop(); //remove last item
-                path = path.join('/');
-                if (!unique[path] && path.includes('/')==true && path!='/'+file) {
-                    unique[path] = path.replaceAll('/','_');
-                    if (unique[path].charAt(0)=='_') unique[path]=unique[path].substr(1,unique[path].length-1);
+                if (express.models[file].functions[func] && express.models[file].functions[func].path) {                
+                    let path = express.models[file].functions[func].path.trim().split('/');
+                    path.pop(); //remove last item
+                    path = path.join('/');
+                    if (!unique[path] && path.includes('/')==true && path!='/'+file) {
+                        unique[path] = path.replaceAll('/','_');
+                        if (unique[path].charAt(0)=='_') unique[path]=unique[path].substr(1,unique[path].length-1);
+                    }
+                } else {
+                    //this can be true if cache had a path that is now cancelled
                 }
             }
             // code
@@ -877,63 +885,65 @@ var ${file} = require('../models/${file}');
             }
             // write each function signature
             for (let func of express.models[file].ordered_functions) {
-                // write jsdoc info for function
-                let _jsdoc = {
-                    method: express.models[file].functions[func].method.toLowerCase(),
-                    path_o: express.models[file].functions[func].path.trim(),
-                    doc: cleanLinesDoc(express.models[file].functions[func].doc)
-                };
-                if (_jsdoc.path_o.charAt(0)=='/') _jsdoc.path_o = _jsdoc.path_o.substr(1,_jsdoc.path_o.length-1); 
-                if (_jsdoc.doc=='') _jsdoc.doc = 'Funcion no documentada';
-                //console.log('PABLO debug without first0:',_jsdoc.path_o);
-                let without_first = listDeleteAt(_jsdoc.path_o,1,'/');
-                //console.log('PABLO debug without first1:',without_first);
-                _jsdoc.path = `/${without_first}`;
-                _jsdoc.method_name = _jsdoc.path_o.split('/').pop(); // last / item; f_jname
-                _jsdoc.memberof = listDeleteAt(_jsdoc.path_o,_jsdoc.path_o.split('/').length,'/');
-                _jsdoc.memberof = _jsdoc.memberof.replaceAll('_','|').replaceAll('/','_');
-                let doc = `/**
+                if (express.models[file].functions[func] && express.models[file].functions[func].path) {
+                    // write jsdoc info for function
+                    let _jsdoc = {
+                        method: express.models[file].functions[func].method.toLowerCase(),
+                        path_o: express.models[file].functions[func].path.trim(),
+                        doc: cleanLinesDoc(express.models[file].functions[func].doc)
+                    };
+                    if (_jsdoc.path_o.charAt(0)=='/') _jsdoc.path_o = _jsdoc.path_o.substr(1,_jsdoc.path_o.length-1); 
+                    if (_jsdoc.doc=='') _jsdoc.doc = 'Funcion no documentada';
+                    //console.log('PABLO debug without first0:',_jsdoc.path_o);
+                    let without_first = listDeleteAt(_jsdoc.path_o,1,'/');
+                    //console.log('PABLO debug without first1:',without_first);
+                    _jsdoc.path = `/${without_first}`;
+                    _jsdoc.method_name = _jsdoc.path_o.split('/').pop(); // last / item; f_jname
+                    _jsdoc.memberof = listDeleteAt(_jsdoc.path_o,_jsdoc.path_o.split('/').length,'/');
+                    _jsdoc.memberof = _jsdoc.memberof.replaceAll('_','|').replaceAll('/','_');
+                    let doc = `/**
  * (${_jsdoc.method.toUpperCase()}) ${_jsdoc.doc}
  * @method
  * @name ${func.replaceAll('_',' / ').replaceAll('|','_')}
  * @alias ${_jsdoc.method_name}
  * @memberof! ${_jsdoc.memberof}\n`;
-                // add params doc of function
-                let func_params = express.models[file].functions[func].params.split(',');
-                for (let param of func_params) {
-                    let param_wstar = param.replaceAll('*','');
-                    if (express.models[file].functions[func].param_doc[param_wstar]) {
-                        let p_type = ccase.pascalize(express.models[file].functions[func].param_doc[param_wstar].type);
-                        let p_desc = express.models[file].functions[func].param_doc[param_wstar].desc.trim();
-                        doc += ` * @param {${p_type}} ${param} ${p_desc}\n`;
-                    } else {
-                        if (param.trim()=='id' && !param.includes('identificador')) {
-                            doc += ` * @param {Int} ${param}\n`;
-                        } else if (param.includes('base64')) {
-                            doc += ` * @param {Base64} ${param}\n`;
+                    // add params doc of function
+                    let func_params = express.models[file].functions[func].params.split(',');
+                    for (let param of func_params) {
+                        let param_wstar = param.replaceAll('*','');
+                        if (express.models[file].functions[func].param_doc[param_wstar]) {
+                            let p_type = ccase.pascalize(express.models[file].functions[func].param_doc[param_wstar].type);
+                            let p_desc = express.models[file].functions[func].param_doc[param_wstar].desc.trim();
+                            doc += ` * @param {${p_type}} ${param} ${p_desc}\n`;
                         } else {
-                            doc += ` * @param {String} ${param}\n`;
+                            if (param.trim()=='id' && !param.includes('identificador')) {
+                                doc += ` * @param {Int} ${param}\n`;
+                            } else if (param.includes('base64')) {
+                                doc += ` * @param {Base64} ${param}\n`;
+                            } else {
+                                doc += ` * @param {String} ${param}\n`;
+                            }
                         }
                     }
+                    // return
+                    if (express.models[file].functions[func].param_doc.return) {
+                        let p_type = ccase.pascalize(express.models[file].functions[func].param_doc.return.type);
+                        let p_desc = express.models[file].functions[func].param_doc.return.desc.trim();
+                        doc += `* @return {${p_type}} ${p_desc}\n`;
+                    } else if (_jsdoc.doc.includes('@return')==false) {
+                        doc += `* @return {object}\n`;
+                    }
+                    doc += ` */\n`;
+                    // router code
+                    doc += `router.${_jsdoc.method}('${_jsdoc.path}', function(req, res, next) {
+                        wait.launchFiber(${file}.${func}, req, res);
+                    });\n`;
+                    // add doc to content if func is visible
+                    if (express.models[file].functions[func].visible==true) {
+                        content += doc+'\n';
+                    }
+                    // 
                 }
-                // return
-                if (express.models[file].functions[func].param_doc.return) {
-                    let p_type = ccase.pascalize(express.models[file].functions[func].param_doc.return.type);
-                    let p_desc = express.models[file].functions[func].param_doc.return.desc.trim();
-                    doc += `* @return {${p_type}} ${p_desc}\n`;
-                } else if (_jsdoc.doc.includes('@return')==false) {
-                    doc += `* @return {object}\n`;
-                }
-                doc += ` */\n`;
-                // router code
-                doc += `router.${_jsdoc.method}('${_jsdoc.path}', function(req, res, next) {
-                    wait.launchFiber(${file}.${func}, req, res);
-                });\n`;
-                // add doc to content if func is visible
-                if (express.models[file].functions[func].visible==true) {
-                    content += doc+'\n';
-                }
-                // 
             }
             // write exports
             content += `module.exports = router;\n`;
@@ -978,8 +988,12 @@ var ${file} = require('../models/${file}');
             content += express.models[file].code;
             // replace db connection info on funcs init { file_init }
             for (let func in express.models[file].functions) {
-                let db_conn = `const { ${Object.keys(express.models[file].functions[func].used_models)} } = await connectToDatabase();`;
-                content = content.replaceAll(`{ ${func}_init }`,db_conn);
+                if (express.models[file].functions[func] && express.models[file].functions[func].used_models) {
+                    let db_conn = `const { ${Object.keys(express.models[file].functions[func].used_models)} } = await connectToDatabase();`;
+                    content = content.replaceAll(`{ ${func}_init }`,db_conn);
+                } else {
+                    // this can be true if cache had a func that now is cancelled
+                }
             }
             // write exports
             content += `module.exports = self;\n`;
