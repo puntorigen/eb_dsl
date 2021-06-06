@@ -2300,6 +2300,64 @@ module.exports = async function(context) {
             }
         },
 
+        'def_imagen_escalar': {
+            x_icons: 'desktop_new',
+            x_text_pattern: `+(imagen|jimp):+(escalar|scale)`,
+            x_level: '>2',
+            attributes_aliases: {
+                width:      'ancho,width',
+                height:     'alto,height',
+                algo:       'algorithmn,algoritmo,metodo,method,modo'
+            },
+            hint:  `Escala las dimensiones de la variable imagen dada, a la definicion de sus atributos.`,
+            func: async function(node, state) {
+                let resp = context.reply_template({ state });
+                let tmp = {};
+                tmp.text = context.dsl_parser.findVariables({
+                    text: node.text,
+                    symbol: `"`,
+                    symbol_closing: `"`
+                }).trim();
+                //attrs
+                let attrs = aliases2params('def_imagen_escalar',node);
+                if (node.icons.includes('bell') && tmp.text.includes('**') && tmp.text.includes('../')==false) {
+                    tmp.text = getTranslatedTextVar(tmp.text,false);
+                }
+                if (attrs.algo) {
+                    if ('nearest,nearest neighbor,neighbor'.split(',').includes(attrs.algo)) {
+                        attrs.algo = `jimp.RESIZE_NEAREST_NEIGHBOR`;
+                    } else if ('bilinear,bi'.split(',').includes(attrs.algo)) {
+                        attrs.algo = `jimp.RESIZE_BILINEAR`;
+                    } else if ('bicubic,bicubico'.split(',').includes(attrs.algo)) {
+                        attrs.algo = `jimp.RESIZE_BICUBIC`;
+                    } else if ('hermite'==attrs.algo) {
+                        attrs.algo = `jimp.RESIZE_HERMITE`;
+                    } else if ('bezier'==attrs.algo) {
+                        attrs.algo = `jimp.RESIZE_BEZIER`;
+                    }
+                }
+                if (attrs.width=='auto') attrs.width = 'jimp.AUTO';
+                if (attrs.height=='auto') attrs.height = 'jimp.AUTO';
+                if (node.icons.includes('bell')) {
+                    if (attrs.width.includes('**')) {
+                        attrs.width = getTranslatedTextVar(attrs.width);
+                    }
+                    if (attrs.height.includes('**')) {
+                        attrs.height = getTranslatedTextVar(attrs.height);
+                    }
+                }
+                //install jimp
+                context.x_state.npm['jimp'] = '0.6.4';
+                context.x_state.functions[resp.state.current_func].imports['jimp'] = 'jimp';
+                //code
+                if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
+                resp.open += `await ${tmp.text}.resize(${attrs.width},${attrs.height}`;
+                if (attrs.algo) resp.open += `,${attrs.algo}`;
+                resp.open += `);\n`;
+                return resp;
+            }
+        },
+
         /* END IMAGE X_COMMANDS */
         'def_xcada_registro': {
             x_icons: 'penguin',
