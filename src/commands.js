@@ -2530,6 +2530,114 @@ module.exports = async function(context) {
             }
         },
 
+        'def_imagen_mask': {
+            x_icons: 'desktop_new',
+            x_text_pattern: `+(imagen|jimp):+(mask|mascara) "*"`,
+            x_level: '>2',
+            attributes_aliases: {
+                image:                  'imagen,image',
+                x:                      'horizontal,x',
+                y:                      'vertical,y'
+            },
+            hint:  `Define una mascara sobre la imagen entregada.`,
+            func: async function(node, state) {
+                let resp = context.reply_template({ state });
+                let tmp = {};
+                tmp.text = context.dsl_parser.findVariables({
+                    text: node.text,
+                    symbol: `"`,
+                    symbol_closing: `"`
+                }).trim();
+                //attrs
+                let isNumeric = function(n) {
+                    return !isNaN(parseFloat(n)) && isFinite(n);
+                };
+                let attrs = aliases2params('def_imagen_mask',node);
+                if (!attrs.x) attrs.x=0;
+                if (!attrs.y) attrs.y=0;
+                if (node.icons.includes('bell') && tmp.text.includes('**') && tmp.text.includes('../')==false) {
+                    tmp.text = getTranslatedTextVar(tmp.text,false);
+                }
+                //map special values
+                Object.keys(attrs).map(function(key) {
+                    if (node.icons.includes('bell') && attrs[key].includes('**')) {
+                        attrs[key] = getTranslatedTextVar(attrs[key],true);
+                    }
+                    if (attrs[key].includes('**')==false && !isNumeric(attrs[key])) {
+                        attrs[key] = `'${attrs[key]}'`;
+                    }
+                });
+                //build data object
+                let data = [
+                    attrs.image,
+                    attrs.x,
+                    attrs.y
+                ];
+                //install jimp
+                context.x_state.npm['jimp'] = '0.6.4';
+                context.x_state.functions[resp.state.current_func].imports['jimp'] = 'jimp';
+                //code
+                if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
+                resp.open += `await ${tmp.text}.composite(${context.jsDump(data).replaceAll('[','').replaceAll(']','')});\n`;
+                return resp;
+            }
+        },
+        
+        'def_imagen_base64': {
+            x_icons: 'desktop_new',
+            x_text_pattern: `+(imagen|jimp):base64 "*",*`,
+            x_level: '>2',
+            attributes_aliases: {
+                format:       'formato,format',
+                quality:      'calidad,quality'
+            },
+            hint:  `Obtiene el base64 de la imagen dada en el formato indicado.`,
+            func: async function(node, state) {
+                let resp = context.reply_template({ state });
+                let tmp = {};
+                tmp.text = context.dsl_parser.findVariables({
+                    text: node.text,
+                    symbol: `"`,
+                    symbol_closing: `"`
+                }).trim();
+                tmp.var = node.text.split(',').splice(-1)[0].trim();
+                //attrs
+                let isNumeric = function(n) {
+                    return !isNaN(parseFloat(n)) && isFinite(n);
+                };
+                let attrs = aliases2params('def_imagen_base64',node);
+                if (node.icons.includes('bell') && tmp.text.includes('**') && tmp.text.includes('../')==false) {
+                    tmp.text = getTranslatedTextVar(tmp.text,false);
+                }
+                if (attrs.format) {
+                    let test = attrs.format.toLowerCase().trim();
+                    if (test == 'png') {
+                        attrs.format = 'jimp.MIME_PNG';
+                    } else if (test == 'jpg') {
+                        attrs.format = 'jimp.MIME_JPEG';
+                    } else if (test == 'tif') {
+                        attrs.format = 'jimp.MIME_TIF';
+                    } else if (test == 'gif') {
+                        attrs.format = 'jimp.MIME_GIF';
+                    } else if (test == 'bmp') {
+                        attrs.format = 'jimp.MIME_BMP';
+                    } else if (test == 'auto') {
+                        attrs.format = 'jimp.AUTO';
+                    }
+                }
+                //install jimp
+                context.x_state.npm['jimp'] = '0.6.4';
+                context.x_state.functions[resp.state.current_func].imports['jimp'] = 'jimp';
+                //code
+                if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
+                if (attrs.quality) {
+                    resp.open += `await ${tmp.text}.quality(${attrs.quality});\n`;
+                }
+                resp.open += `var ${tmp.var} = await ${tmp.text}.getBase64Async(${attrs.format});\n`;
+                return resp;
+            }
+        },
+
         /* END IMAGE X_COMMANDS */
         'def_xcada_registro': {
             x_icons: 'penguin',
