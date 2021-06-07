@@ -10,9 +10,10 @@ let myArgs = mri(process.argv, {
         clean: ['x','clear'],
         cpu: ['c','cpu'],
         help: ['h','ayuda'],
-        debug: 'd',
+        debug: ['d','debug'],
         justgit: ['g','justgit'],
-        nodeploy: ['n','nodeploy']
+        nodeploy: ['n','nodeploy'],
+        deploy: ['p','deploy']
     },
     boolean: ['clean','debug','justgit'],
     default: {
@@ -44,6 +45,7 @@ if (myArgs.cpu) {
             x_console.out({ message:'-s, --src eb.dsl\t(required) relative/absolute eb.dsl file to parse', color:'brightWhite' });
             x_console.out({ message:'-x, --clean\t\tclear cache before compiling', color:'cyan' });
             x_console.out({ message:'-g, --justgit\t\tjust create the _git.dsl version', color:'cyan' });
+            x_console.out({ message:'-p, --deploy\t\tforce change the deploy value', color:'cyan' });
             x_console.out({ message:'-n, --nodeploy\t\tdo everything as requested, except launching the terminal', color:'cyan' });
             x_console.out({ message:'-c, --cpu [float]\tamount of cpus to use. default:'+require('os').cpus().length, color:'cyan' });
             x_console.out({ message:'-d, --debug\t\tturns verbose logging on', color:'cyan' });

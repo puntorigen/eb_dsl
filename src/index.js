@@ -56,6 +56,10 @@ export default class eb_dsl extends concepto {
         //this.debug('central_config',this.x_state.central_config);
         //this.x_state.assets = await this._readAssets();
         //this.debug('assets_node',this.x_state.assets);
+        if (this.x_config.deploy && this.x_config.deploy.trim()!='') {
+            this.x_console.outT({ message: `(as requested) force changing deploy target to: ${this.x_config.deploy.trim()}`, color: `brightYellow` });
+            this.x_state.central_config.deploy = this.x_config.deploy;
+        }
         let _folders = {
 			'bin': 'bin/',
 			'models': 'models/',
