@@ -1098,14 +1098,14 @@ module.exports = async function(context) {
                         if (isNumeric(value)) {
                             type = 'Integer';
                             value = parseFloat(value);
-                        } else if (typeof value=='string' && value.includes(',')) {
+                        } else if (typeof value=='string' && value.includes(',') && value.includes(`(`)==false && value.includes(`)`)==false) {
                             type = 'Array';
                             value = value.split(',');
                         } else if (typeof value=='string' && value.includes('**') && node.icons.includes('bell')) {
                             type = 'var';
                             value = getTranslatedTextVar(value,true);
                         }
-                        if (typeof value=='string' && key.includes(':')) {
+                        if (key.includes(':')) { //typeof value=='string' && 
                             // x:{operator}=value
                             let elements = extract(`{field}:{operator}`,keym);
                             if (elements.operator) {
@@ -1624,6 +1624,85 @@ module.exports = async function(context) {
             x_text_contains: 'consultar web,,',
             x_level: '>3',
             attributes_aliases: {
+                ':method':           '_method,:metodo,:method,_metodo',
+                ':responseType':     'responsetype,response,:responsetype,:response',
+                ':responseEncoding': ':encoding'
+            },
+            hint: 'Realiza una llamada a la url indicada enviando los datos definidos en sus atributos. Entrega resultados en variable definida luego de coma.',
+            func: async function(node, state) {
+                let resp = context.reply_template({
+                    state
+                });
+                let config = { headers:{} }, data = {}, tmp = { simple:true, method:'get' };
+                if (node.text.includes(',')) tmp.var=node.text.split(',').splice(-1)[0].trim();
+                // prepare attrs
+                let attrs = aliases2params('def_consultar_web', node, false, 'this.',true);
+                delete attrs.refx;
+                Object.keys(attrs).map(function(key) {
+                    if (attrs[key].includes('**') && node.icons.includes('bell')) {
+                        attrs[key] = getTranslatedTextVar(attrs[key],true);
+                    }
+                    //
+                    if (key.charAt(0)==':') {
+                        let wd = key.right(key.length-1);
+                        config[wd] = attrs[key];
+                    } else if (key.length>2 && key.substr(0,3)=='x-:') {
+                        config.headers[key.right(key.length-3)] = attrs[key];
+                    } else if (key.length>2 && key.substr(0,2)=='x-') {
+                        config.headers[key] = attrs[key];
+                    } else {
+                        data[key] = attrs[key];
+                    }
+                });
+                if (config.headers=={}) delete config.headers;
+                if (node.link!='') config.url = node.link.trim();
+                // data mapping
+                if (config.username) {
+                    if (!config.auth) config.auth={};
+                    config.auth.username = config.username;
+                    config.auth.password = config.password;
+                    delete config.username;
+                    delete config.password;
+                }
+                if (config.method.toLowerCase()=='postjson') config.method = 'post';
+                if (config.meta) {
+                    tmp.meta = config.meta;
+                    delete config.meta;
+                }
+                if (!config.maxContentLength) config.maxContentLength=5000000;
+                //console.log('PABLO debug ->consultar web',{config,data,attrs,tmp});
+                //add comment
+                if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
+                //prepare url
+                if (node.icons.includes('bell') && config.url.includes('**')) {
+                    config.url = getTranslatedTextVar(config.url,true);
+                } else {
+                    config.url = `'${config.url}'`;
+                }
+                tmp.url = config.url;
+                //join as object
+                if (tmp.method.toLowerCase()=='get') {
+                    config.params = data;
+                } else {
+                    config.data = data;
+                }
+                //delete config.url;
+                //
+                if (tmp.meta) {
+                    resp.open += `const ${tmp.var} = await axios.request(${context.jsDump(config)});\n`;
+                } else {
+                    resp.open += `const ${tmp.var} = (await axios.request(${context.jsDump(config)})).data;\n`;
+                }
+                //return
+                return resp;
+            }
+        },
+/*
+        'def_consultar_web_cancelada': {
+            x_icons: 'desktop_new',
+            x_text_contains: 'consultar webxxxx,,',
+            x_level: '>3',
+            attributes_aliases: {
                 ':method':       '_method,:metodo,:method,_metodo',
                 ':response':     'responsetype,response,:responsetype,:response'
             },
@@ -1632,7 +1711,7 @@ module.exports = async function(context) {
                 let resp = context.reply_template({
                     state
                 });
-                let special = ':method,:username,:password,:encoding,:maxlength,:redirects,:timeout,:response';
+                let special = ':username,:password,:encoding,:maxlength,:redirects,:timeout';
                 //prepare.
                 let tmp = {
                     var:node.id,
@@ -1759,7 +1838,7 @@ module.exports = async function(context) {
                 //return
                 return resp;
             }
-        },
+        },*/
 
         'def_consultar_web_upload': {
             x_icons: 'help',
@@ -2268,7 +2347,7 @@ module.exports = async function(context) {
                 context.x_state.functions[resp.state.current_func].imports['jimp'] = 'jimp';
                 //code
                 if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
-                resp.open += `var ${tmp.var} = new jimp(${attrs.width},${attrs.height})`;
+                resp.open += `var ${tmp.var} = new jimp(${attrs.width},${attrs.height}`;
                 if (attrs.color) {
                     resp.open += `,jimp.rgbaToInt(${attrs.color})`;
                 } else if (node.bgcolor!='') {
@@ -2301,7 +2380,7 @@ module.exports = async function(context) {
                     if (node.icons.includes('bell') && tmp.text.includes('**')) {
                         tmp.text = `require('path').resolve(__dirname,${getTranslatedTextVar(tmp.text,false)})`;
                     } else {
-                        tmp.text = `require('path').resolve(__dirname,'${tmp.text}');`;
+                        tmp.text = `require('path').resolve(__dirname,'${tmp.text}')`;
                     }
                 }
                 //install jimp
