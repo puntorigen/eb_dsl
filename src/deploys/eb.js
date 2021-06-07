@@ -413,16 +413,26 @@ node_modules/`;
         let resp = [];
         //aws config requirements
         if (this.context.x_state.npm['aws-sdk']) {
-            let aws_data = {
-                accessKeyId: this.context.x_state.config_node.aws.access,
-                secretAccessKey: this.context.x_state.config_node.aws.secret
-            };
-            if (this.context.x_state.config_node.aws.region) {
-                aws_data.region = this.context.x_state.config_node.aws.region;
+            if (!this.context.x_state.config_node.aws) {
+                this.context.x_state.npm['aws-get-credentials'] = '*';
+                resp.push(`const AWS = require('aws-sdk');
+                (async function() {
+                    const { getAWSCredentials } = require('aws-get-credentials');
+                    AWS.config.credentials = await getAWSCredentials();;
+                })();
+                const AWS_s3 = new AWS.S3();`);
+            } else {
+                let aws_data = {
+                    accessKeyId: this.context.x_state.config_node.aws.access,
+                    secretAccessKey: this.context.x_state.config_node.aws.secret
+                };
+                if (this.context.x_state.config_node.aws.region) {
+                    aws_data.region = this.context.x_state.config_node.aws.region;
+                }
+                resp.push(`const AWS = require('aws-sdk');
+                AWS.config.update(${this.context.jsDump(aws_data)});
+                const AWS_s3 = new AWS.S3();`);
             }
-            resp.push(`const AWS = require('aws-sdk');
-            AWS.config.update(${this.context.jsDump(aws_data)});
-            const AWS_s3 = new AWS.S3();`);
         }
         return resp;
     }
