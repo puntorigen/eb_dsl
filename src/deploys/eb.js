@@ -224,7 +224,7 @@ let git_ignore=`# Mac System files
 .DS_Store?
 __MACOSX/
 Thumbs.db
-# VUE files
+# EB files
 node_modules/`;
                 
                 await this.context.writeFile(path.join(eb_base,'.gitignore'),git_ignore);
@@ -261,8 +261,13 @@ node_modules/`;
             spinner.start('Deploying to AWS ElasticBean .. please wait');
             // execute eb deploy
             try {
-                results.eb_deploy = await spawn('eb',['deploy',eb_instance],{ cwd:eb_base }); //, stdio:'inherit'
-                spinner.succeed('EB deployed successfully');
+                if (this.context.x_config.nodeploy && this.context.x_config.nodeploy==true) {
+                    spinner.succeed('EB ready to be deployed (nodeploy as requested)');
+                    this.context.x_console.outT({ message:`Aborting final deployment as requested`, color:'brightRed'});
+                } else {
+                    results.eb_deploy = await spawn('eb',['deploy',eb_instance],{ cwd:eb_base }); //, stdio:'inherit'
+                    spinner.succeed('EB deployed successfully');
+                }
             } catch(gi) { 
                 //test if eb failed because instance has not being created yet, if so create it
                 results.eb_deploy = gi; 
@@ -296,7 +301,7 @@ node_modules/`;
                 }
             }
             //if errors.length==0 && this.x_state.central_config.debug=='true'
-            if (errors.length==0 && this.context.x_state.central_config.debug==true) {
+            if (errors.length==0 && this.context.x_state.central_config.debug==true && !this.context.x_config.nodeploy) {
                 //open eb logging console
                 let ci = require('ci-info');
                 if (ci.isCI==false) {
