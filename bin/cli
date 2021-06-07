@@ -18,7 +18,8 @@ let myArgs = mri(process.argv, {
     default: {
         clean:false,
         debug:false,
-        justgit:false
+        justgit:false,
+        nodeploy:false
     }
 });
 delete myArgs._;
