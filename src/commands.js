@@ -1287,7 +1287,8 @@ module.exports = async function(context) {
 
         'def_insertar_modelo': {
             x_icons: 'desktop_new',
-            x_text_pattern: [`insertar modelo "*"`,`insertar modelo "*",*`],
+            x_text_pattern: [`insertar modelo "*"`,`insertar modelo "**",*`,
+                             `insertar modelo "*/*"`,`insertar modelo "*/*",*`],
             x_level: '>2',
             hint:  `Inserta los atributos (campos) y sus valores en el modelo indicado entrecomillas. 
                     Si especifica una variable luego de la coma, asigna el resultado de la nueva insercion en esa variable.`,
