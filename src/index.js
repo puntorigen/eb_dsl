@@ -48,6 +48,8 @@ export default class eb_dsl extends concepto {
             stores_types: { versions: {}, expires: {} },
             nuxt_config: { head_script: {}, build_modules: {}, modules: {} },
         };
+        let ci = require('ci-info');
+        this.isCI = ci.isCI;
         this.x_state.config_node = await this._readConfig();
         //this.debug('config_node',this.x_state.config_node);
         this.x_state.central_config = await this._readCentralConfig();
@@ -59,6 +61,7 @@ export default class eb_dsl extends concepto {
 			'models': 'models/',
 			'routes': 'routes/',
 			'views': 'views/',
+            'secrets': 'secrets/',
 			'db_models': 'db_models/',
 			'public': 'public/',
 			'doc': 'doc/'

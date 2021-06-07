@@ -298,7 +298,7 @@ node_modules/`;
             //if errors.length==0 && this.x_state.central_config.debug=='true'
             if (errors.length==0 && this.context.x_state.central_config.debug==true) {
                 //open eb logging console
-                let ci = require('ci-info');              
+                let ci = require('ci-info');
                 if (ci.isCI==false) {
                     spinner.start('Opening EB debug terminal ..');
                     try {
