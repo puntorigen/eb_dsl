@@ -55,17 +55,20 @@ export default class eb_dsl extends concepto {
         this.x_state.central_config = await this._readCentralConfig();
         //this.debug('central_config',this.x_state.central_config);
         //this.x_state.assets = await this._readAssets();
-        //this.debug('assets_node',this.x_state.assets);        
-		this.x_state.dirs = await this._appFolders({
+        //this.debug('assets_node',this.x_state.assets);
+        let _folders = {
 			'bin': 'bin/',
 			'models': 'models/',
 			'routes': 'routes/',
 			'views': 'views/',
-            'secrets': 'secrets/',
 			'db_models': 'db_models/',
 			'public': 'public/',
 			'doc': 'doc/'
-		});
+		};
+        if (this.x_state.central_config.deploy && this.x_state.central_config.deploy.includes('sls:')) {
+            _folders.secrets = 'secrets/';
+        }
+		this.x_state.dirs = await this._appFolders(_folders);
         // read modelos node (Sequelize DB)
         this.x_state.models = await this._readModelos(); //alias: database tables
         //console.log('PABLO debug models',this.x_state.models);
