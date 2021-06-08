@@ -1204,34 +1204,42 @@ var ${file} = require('../models/${file}');
             resp.attributes = {...modelos[0].attributes };
             resp.doc = modelos[0].text_note;
             resp.length = modelos[0].nodes.length;
+            let extract = require('extractjs')();
             for (let table of modelos[0].nodes) {
                 let fields = {...table.attributes }; //table.attributes.map(x=>{ fields={...fields,...x} }); //table attributes
                 resp.tables[table.text] = { fields: {} }; //create table
                 tmp.sql_fields = [];
                 for (let field in fields) {
-                    resp.tables[table.text].fields[field] = fields_map[fields[field]]; //assign field with mapped value
-                    tmp.sql_fields.push(field + ' ' + fields_map[fields[field]]);
+                    //console.log('fields_map',{field,fields});
+                    if (fields[field].includes('(')) {
+                        let parts = extract(`{type}({amount})`,fields[field]);
+                        resp.tables[table.text].fields[field] = fields_map[parts.type]+`(${parts.amount})`; //assign field with mapped value
+                        tmp.sql_fields.push(field + ' ' + fields_map[fields[field]]);
+                    } else if (field.charAt(0)!=':') {
+                        resp.tables[table.text].fields[field] = fields_map[fields[field]]; //assign field with mapped value
+                        tmp.sql_fields.push(field + ' ' + fields_map[fields[field]]);
+                    }
                 }
                 resp.tables[table.text].sql = `CREATE TABLE ${table.text}(${tmp.sql_fields.join(',')})`;
                 // test special attrs
-                if (table[':dbname']) resp.tables[table.text].db = table[':dbname'];
-                if (table[':tipo']) resp.tables[table.text].type = table[':tipo'];
-                if (table[':type']) resp.tables[table.text].type = table[':type'];
-                if (table[':tipo']) resp.tables[table.text].type = table[':tipo'];
-                if (table[':index']) {
+                if (fields[':dbname']) resp.tables[table.text].db = table[':dbname'];
+                if (fields[':tipo']) resp.tables[table.text].type = table[':tipo'];
+                if (fields[':type']) resp.tables[table.text].type = table[':type'];
+                if (fields[':tipo']) resp.tables[table.text].type = table[':tipo'];
+                if (fields[':index']) {
                     if (!resp.tables[table.text].indexes) resp.tables[table.text].indexes=[];
                     resp.tables[table.text].indexes.push({
-                        name: this.hash(table.text+'_'+table[':idex']),
+                        name: await this.hash(table.text+'_'+table[':index']),
                         unique: false,
-                        fields: table[':index'].split(',')
+                        fields: fields[':index'].split(',')
                     });
                 }
-                if (table[':index_unique']) {
+                if (fields[':index_unique']) {
                     if (!resp.tables[table.text].indexes) resp.tables[table.text].indexes=[];
                     resp.tables[table.text].indexes.push({
-                        name: this.hash(table.text+'_'+table[':idex']),
+                        name: await this.hash(table.text+'_'+table[':index_unique']),
                         unique: true,
-                        fields: table[':index_unique'].split(',')
+                        fields: fields[':index_unique'].split(',')
                     });
                 }
                 //
@@ -1305,14 +1313,33 @@ var ${file} = require('../models/${file}');
                 'DATETIME': 'type.DATE',
                 'BLOB': 'type.BLOB'
             };
+            let extract = require('extractjs')();
+            //console.log('pablo dump fields',{table,fields});
             for (let key in fields) {
                 if (fields[key] in map) {
                     model[key] = map[fields[key]];
+                } else if (fields[key] && fields[key].includes('(')) {
+                    //example string(10)
+                    let elements = extract(`{field}({amount})`,fields[key]);
+                    if (elements.field in map) {
+                        model[key] = map[elements.field]+`(${elements.amount})`;
+                    }
                 }
             }
-            let content = `module.exports = (sequelize, type) => {
-                return sequelize.define('${db_name}', ${this.jsDump(model,'type.')});
-            }`;
+            //add indexes
+            let content = ``;
+            if (this.x_state.models.tables[table].indexes) {
+                //write model with indexes
+                let indexes = { indexes:this.x_state.models.tables[table].indexes };
+                content = `module.exports = (sequelize, type) => {
+                    return sequelize.define('${db_name}', ${this.jsDump(model,'type.')}, ${this.jsDump(indexes)});
+                }`;
+            } else {
+                //write model without indexes
+                content = `module.exports = (sequelize, type) => {
+                    return sequelize.define('${db_name}', ${this.jsDump(model,'type.')});
+                }`;
+            }
             // write file
             await this.writeFile(target,content);
         }
