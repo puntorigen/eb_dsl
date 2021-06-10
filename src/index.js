@@ -1165,7 +1165,9 @@ var ${file} = require('../models/${file}');
         // map our values to real database values 
         let type_map = {
             id: { value: 'INT AUTOINCREMENT PRIMARY KEY', alias: ['identificador', 'autoid', 'autonum', 'key'] },
-            texto: { value: 'STRING', alias: ['text', 'varchar', 'string'] },
+            string: { value: 'STRING', alias: ['varchar', 'string'] },
+            text: { value: 'TEXT', alias: ['texto', 'largo'] },
+            smalltext: { value: `TEXT('tiny')`, alias: ['textochico', 'textocorto', 'corto'] },
             int: { value: 'INTEGER', alias: ['numero chico', 'small int', 'numero'] },
             float: { value: 'FLOAT', alias: ['decimal', 'real'] },
             boolean: { value: 'BOOLEAN', alias: ['boleano', 'true/false'] },
@@ -1307,6 +1309,8 @@ var ${file} = require('../models/${file}');
                 },
                 'INTEGER': 'type.INTEGER',
                 'STRING': 'type.STRING',
+                'TEXT': 'type.TEXT',
+                'TEXT(\'tiny\')': `type.TEXT('tiny')`,
                 'FLOAT': 'type.FLOAT',
                 'BOOLEAN': 'type.BOOLEAN',
                 'DATEONLY': 'type.DATE',
