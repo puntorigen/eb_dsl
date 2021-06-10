@@ -2835,26 +2835,29 @@ module.exports = async function(context) {
             x_text_contains: 'guardar nota|capturar nota|note:save|save note',
             attributes_aliases: {
                 'strip':      'text,strip,limpio',
-                'asis':       'asis,as_it_was'
+                'html':       ':html',
+                'strip':      ':strip',
+                'asis':       ':asis,asis,as_it_was'
             },
             meta_type: 'script',
             hint: 'Crea una variable con el contenido HTML indicado en la nota del nodo.',
         	func: async function(node, state) {
                 let resp = context.reply_template({ state });
                 // attrs
-                let attrs = {...{ html:true, asis:false },...aliases2params('def_guardar_nota', node, false, 'this.')};
+                let attrs = {...{ html:true, asis:false },...aliases2params('def_guardar_nota', node, false, 'this.', true)};
                 delete attrs.refx;
                 if (attrs[':html']) attrs.html=true;
                 if (attrs[':strip']) attrs.html=false;
+                if (attrs.strip) attrs.html=false;
                 //prepare
-                let tmp = { content:node.text_note };
+                let tmp = { content:node.text_note_html };
                 tmp.var = node.text.split(',').pop().trim();
                 if (attrs.html) {
                     if (node.text_rich!='') tmp.content = node.text_rich; //this has inner of body already
                     //parse content
                     if (!attrs[':asis'] && !attrs.asis) {
                         //transform tags 'p' style:text-align:center to <center>x</center>
-                        //transform <p>x</p> to x<br/>
+                        //transform <p>x</p> to x<br/>.
                         let cheerio = require('cheerio');
                         let sub = cheerio.load(tmp.content, { ignoreWhitespace: false, xmlMode:true, decodeEntities:false });
                         let paragraphs = sub('p').toArray();
