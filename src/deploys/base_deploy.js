@@ -140,4 +140,8 @@ export default class base_deploy {
         return resp;
     }
 
+    sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
 }

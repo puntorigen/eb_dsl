@@ -42,6 +42,50 @@ export default class eb extends base_deploy {
         return true;
     }
 
+    async _createEBx_configEB() {
+        // create config.yml content for defining EB instance
+        let eb_full = this.context.x_state.central_config.deploy.replaceAll('eb:','');
+        let eb_appname = eb_full;
+        let eb_instance = `${eb_appname}-dev`;
+        if (eb_full.includes(',')) {
+            eb_appname = eb_full.split(',')[0];
+            eb_instance = eb_full.split(',').splice(-1)[0];
+        }
+        // create YAML
+        let yaml = require('yaml');
+        let data = {
+            'branch-defaults': {
+                master: {
+                    environment: eb_instance,
+                    group_suffix: null
+                }
+            },
+            global: {
+                application_name: eb_appname,
+                branch: null,
+                default_ec2_keyname: 'aws-eb',
+                default_platform: 'Node.js',
+                default_region: 'us-east-1',
+                include_git_submodules: true,
+                instance_profile: null,
+                platform_name: null,
+                platform_version: null,
+                profile: null,
+                repository: null,
+                sc: 'git',
+                workspace_type: 'Application'
+            }
+        };
+        if (this.context.x_state.config_node.aws.region) {
+            data.global.default_region = this.context.x_state.config_node.aws.region;
+        }
+        //write
+        let path = require('path');
+        let eb_base = this.context.x_state.dirs.app;
+        let eb_dir = path.join(eb_base,'.elasticbeanstalk');
+        await this.context.writeFile(path.join(eb_dir,'config.yml'),yaml.stringify(data, { version:'1.1' }));
+    }
+
     async _createEBx_configNode() {
         // create 01_confignode content for setting ENV vars within EB instance
         let yaml = require('yaml');
@@ -87,7 +131,7 @@ export default class eb extends base_deploy {
             // omit special config 'reserved' (aurora,vpc,aws) node keys
             if (!['copiar'].includes(key) && typeof this.context.x_state.config_node[key] === 'object') {
                 Object.keys(this.context.x_state.config_node[key]).map(function(attr) {
-                    data.option_settings['aws:elasticbeanstalk:application:environment'][key.toUpperCase()+'_'+attr.toUpperCase()] = this.context.x_state.config_node[key][attr];
+                    if (attr.charAt(0)!=':') data.option_settings['aws:elasticbeanstalk:application:environment'][key.toUpperCase()+'_'+attr.toUpperCase()] = this.context.x_state.config_node[key][attr];
                 }.bind(this));
             }
         }
@@ -106,13 +150,13 @@ export default class eb extends base_deploy {
                 container_commands: {
                     extend_proxy_timeout: {
                         command: 
-`sed -i '/\s*location \/ {/c \
-        client_max_body_size 500M; \
-        location / { \
-                proxy_connect_timeout       ${this.context.x_state.central_config.timeout};\
-                proxy_send_timeout          ${this.context.x_state.central_config.timeout};\
-                proxy_read_timeout          ${this.context.x_state.central_config.timeout};\
-                send_timeout                ${this.context.x_state.central_config.timeout};\
+`sed -i '/\\s*location \\/ {/c \\
+        client_max_body_size 500M; \\
+        location / { \\
+                proxy_connect_timeout       ${this.context.x_state.central_config.timeout};\\
+                proxy_send_timeout          ${this.context.x_state.central_config.timeout};\\
+                proxy_read_timeout          ${this.context.x_state.central_config.timeout};\\
+                send_timeout                ${this.context.x_state.central_config.timeout};\\
         ' /tmp/deployment/config/#etc#nginx#conf.d#00_elastic_beanstalk_proxy.conf`
                     }
                 }
@@ -121,7 +165,7 @@ export default class eb extends base_deploy {
             let path = require('path');
             let eb_base = this.context.x_state.dirs.app;
             let eb_dir = path.join(eb_base,'.ebextensions');
-            await this.context.writeFile(path.join(eb_dir,'extend-proxy-timeout.config'),yaml.stringify(data, { version:'1.1' }));
+            await this.context.writeFile(path.join(eb_dir,'extend-proxy-timeout.config'),yaml.stringify(data)); //, { version:'1.1' }
         }
     }
 
@@ -171,7 +215,7 @@ export default class eb extends base_deploy {
         let eb_full = this.context.x_state.central_config.deploy.replaceAll('eb:','');
         let eb_appname = eb_full;
         let eb_instance = `${eb_appname}-dev`;
-        if (this.context.x_state.central_config.deploy.contains(',')) {
+        if (eb_full.includes(',')) {
             eb_appname = eb_full.split(',')[0];
             eb_instance = eb_full.split(',').splice(-1)[0];
         }
@@ -181,10 +225,14 @@ export default class eb extends base_deploy {
             //create .ebextensions directory
             let path = require('path'), fs = require('fs').promises;
             let eb_base = this.context.x_state.dirs.app;
-            let eb_dir = path.join(eb_base,'.ebextensions');
+            let eb_dir_ext = path.join(eb_base,'.ebextensions');
+            try { await fs.mkdir(eb_dir_ext, { recursive: true }); } catch(ef) {}
+            let eb_dir = path.join(eb_base,'.elasticbeanstalk');
             try { await fs.mkdir(eb_dir, { recursive: true }); } catch(ef) {}
             //write .npmrc file
             await this.context.writeFile(path.join(eb_base,'.npmrc'),'unsafe-perm=true');
+            //write .ebextensions/config.yml
+            await this._createEBx_configEB();
             //write .ebextensions/01_confignode.config
             await this._createEBx_configNode();
             //write .ebextensions/extend-proxy-timeout.config
@@ -193,7 +241,7 @@ export default class eb extends base_deploy {
             if (this.context.x_state.central_config.rtc==true) {
                 await this._createEBx_sockets();
             }
-            if (this.context.x_state.npm.puppeteer || this.x_state.context.npm['puppeteer-code']) {
+            if (this.context.x_state.npm.puppeteer || this.context.x_state.npm['puppeteer-code']) {
                 await this._createEBx_puppeteer();
             }
             //create .ebignore file
@@ -214,9 +262,10 @@ jspm_packages/
             //init git if not already
             spinner.succeed('EB config files created successfully');
             let results = {};
-            if (!(await this.exists(path.join(eb_base,'.git')))) {
+            let git_exists = await this.context.exists(path.join(eb_base,'.git'));
+            if (!(git_exists)) {
                 //git directory doesn't exist
-                this.context.x_console.outT({ message:'CREATING .GIT DIRECTORY' });
+                //this.context.x_console.outT({ message:'CREATING .GIT DIRECTORY' });
                 spinner.start('Initializing project git repository');
                 spinner.text('Creating .gitignore file');
 let git_ignore=`# Mac System files
@@ -284,11 +333,15 @@ node_modules/`;
                         errors.push(aws_cred);
                     }
                     if (errors.length==0) {
-                        spinner.start('EB it seems this is a new deployment: issuing eb create');
+                        spinner.start('This looks like a new deployment: issuing eb create');
                         try {
-                            //console.log('\n');
-                            results.eb_create = await spawn('eb',['create',eb_instance],{ cwd:eb_base }); //, stdio:'inherit'
+                            //console.log('eb create\n',['eb','create',eb_instance]);
+                            await this.launchTerminal('eb',['create',eb_instance],eb_base);
+                            await this.sleep(1000);
                             spinner.succeed('EB created and deployed successfully');
+                            //results.eb_create = await spawn('eb',['create',eb_instance],{ cwd:eb_base }); //, stdio:'inherit'
+                            //console.log(results.eb_create);
+                            //process.exit(6);
                         } catch(ec) {
                             this.context.x_console.outT({ message:gi.stdout.toString(), color:'red'});
                             spinner.fail('EB creation failed');
@@ -296,7 +349,7 @@ node_modules/`;
                         }
                     }
                 } else {
-                    this.context.x_console.outT({ message:'error: eb create (exitcode:'+gi.code+'):'+gi.stdout.toString(), color:'red'});
+                    this.context.x_console.outT({ message:'error: eb create (exitcode:'+gi.code+'):'+gi.toString(), color:'red'});
                     errors.push(gi);
                 }
             }
@@ -336,10 +389,10 @@ node_modules/`;
             // @TODO add this block to deploys/eb 'post' method and onPrepare to 'pre' 20-br-21
             // only execute after deploy and if user requested specific aws credentials on map
             let path = require('path'), copy = require('recursive-copy'), os = require('os');
-            let fs = require('fs');
             let aws_bak = path.join(this.context.x_state.dirs.base, 'aws_backup.ini');
             let aws_file = path.join(os.homedir(), '/.aws/') + 'credentials';
             // try to copy aws_bak over aws_ini_file (if bak exists)
+            let fs = require('fs');
             let exists = s => new Promise(r=>fs.access(s, fs.constants.F_OK, e => r(!e)));
             if ((await this.context.exists(aws_bak))) {
                 await copy(aws_bak,aws_file,{ overwrite:true, dot:true, debug:false });
