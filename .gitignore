@@ -23,3 +23,4 @@ flow-typed/npm/*
 # dsl file tests
 test/*
 
+EB x_commands.dsl

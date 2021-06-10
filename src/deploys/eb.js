@@ -48,28 +48,28 @@ export default class eb extends base_deploy {
         let data = {
             option_settings: {
                 'aws:elasticbeanstalk:application:environment' : {
-                    APP_PORT: this.context.central_config.port,
+                    APP_PORT: this.context.x_state.central_config.port,
                     CLUSTER: 1,
                     START_TYPE: 'development'
                 }
             }
         };
         //instancetype
-        if (this.context.central_config.instance_type) {
+        if (this.context.x_state.central_config.instance_type) {
             data.option_settings.container_commands = {
                 'aws:autoscaling:launchconfiguration': {
-                    InstanceType: this.context.central_config.instance_type
+                    InstanceType: this.context.x_state.central_config.instance_type
                 }
             };  
         }
         //port
-        if (this.context.central_config.port!=8081) {
+        if (this.context.x_state.central_config.port!=8081) {
             data.container_commands = {
                 '00_remove_redirect_http': {
                     command: 'sudo iptables -t nat -D PREROUTING -i eth0 -p tcp --dport 80 -j REDIRECT --to-port 8080'
                 },
                 '01_add_redirect_http': {
-                    command: `sudo iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 80 -j REDIRECT --to-port ${this.context.central_config.port}`
+                    command: `sudo iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 80 -j REDIRECT --to-port ${this.context.x_state.central_config.port}`
                 }
             };
             data.option_settings['aws:elasticbeanstalk:environment'] = {
@@ -77,17 +77,17 @@ export default class eb extends base_deploy {
             };
         }
         //stage & env_variables
-        if (this.context.central_config.stage && this.context.central_config.stage!='') {
-            data.option_settings['aws:elasticbeanstalk:application:environment'].STAGE = this.context.central_config.stage;
-            if (this.context.central_config.stage!='dev') {
-                data.option_settings['aws:elasticbeanstalk:application:environment'].START_TYPE = this.context.central_config.stage;
+        if (this.context.x_state.central_config.stage && this.context.x_state.central_config.stage!='') {
+            data.option_settings['aws:elasticbeanstalk:application:environment'].STAGE = this.context.x_state.central_config.stage;
+            if (this.context.x_state.central_config.stage!='dev') {
+                data.option_settings['aws:elasticbeanstalk:application:environment'].START_TYPE = this.context.x_state.central_config.stage;
             }
         }
         for (let key in this.context.x_state.config_node) {
             // omit special config 'reserved' (aurora,vpc,aws) node keys
             if (!['copiar'].includes(key) && typeof this.context.x_state.config_node[key] === 'object') {
                 Object.keys(this.context.x_state.config_node[key]).map(function(attr) {
-                    data.option_settings['aws:elasticbeanstalk:application:environment'][key.toUpperCase()+'_'+attr.toUpperCase()] = this.context.config_node[key][attr];
+                    data.option_settings['aws:elasticbeanstalk:application:environment'][key.toUpperCase()+'_'+attr.toUpperCase()] = this.context.x_state.config_node[key][attr];
                 }.bind(this));
             }
         }
@@ -100,7 +100,7 @@ export default class eb extends base_deploy {
 
     async _createEBx_timeout() {
         // create 01_confignode content for setting ENV vars within EB instance
-        if (this.context.central_config.timeout) {
+        if (this.context.x_state.central_config.timeout) {
             let yaml = require('yaml');
             let data = {
                 container_commands: {
@@ -109,11 +109,11 @@ export default class eb extends base_deploy {
 `sed -i '/\s*location \/ {/c \
         client_max_body_size 500M; \
         location / { \
-                proxy_connect_timeout       ${this.context.central_config.timeout};\
-                proxy_send_timeout          ${this.context.central_config.timeout};\
-                proxy_read_timeout          ${this.context.central_config.timeout};\
-                send_timeout                ${this.context.central_config.timeout};\
-        ' /tmp/deployment/config/##etc##nginx##conf.d##00_elastic_beanstalk_proxy.conf`
+                proxy_connect_timeout       ${this.context.x_state.central_config.timeout};\
+                proxy_send_timeout          ${this.context.x_state.central_config.timeout};\
+                proxy_read_timeout          ${this.context.x_state.central_config.timeout};\
+                send_timeout                ${this.context.x_state.central_config.timeout};\
+        ' /tmp/deployment/config/#etc#nginx#conf.d#00_elastic_beanstalk_proxy.conf`
                     }
                 }
             };
@@ -135,7 +135,7 @@ export default class eb extends base_deploy {
 `sed -i '/\s*proxy_set_header\s*Connection/c \
         proxy_set_header Upgrade $http_upgrade;\
         proxy_set_header Connection ""upgrade"";\
-        ' /tmp/deployment/config/##etc##nginx##conf.d##00_elastic_beanstalk_proxy.conf`
+        ' /tmp/deployment/config/#etc#nginx#conf.d#00_elastic_beanstalk_proxy.conf`
                 }
             }
         };
@@ -190,10 +190,10 @@ export default class eb extends base_deploy {
             //write .ebextensions/extend-proxy-timeout.config
             await this._createEBx_timeout();
             //enable websockets?
-            if (this.context.central_config.rtc==true) {
+            if (this.context.x_state.central_config.rtc==true) {
                 await this._createEBx_sockets();
             }
-            if (this.context.npm.puppeteer || this.context.npm['puppeteer-code']) {
+            if (this.context.x_state.npm.puppeteer || this.x_state.context.npm['puppeteer-code']) {
                 await this._createEBx_puppeteer();
             }
             //create .ebignore file
