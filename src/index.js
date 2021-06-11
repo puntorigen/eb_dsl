@@ -721,10 +721,18 @@ function onListening() {
             }
             content += `});\n`;
         }
+        // create cors origin options
+        let cors_options = {};
+        if (this.x_state.config_node.cors) {
+            cors_options.origin = [];
+            for (let x in this.x_state.config_node.cors) {
+                cors_options.origin.push(this.x_state.config_node.cors[x]);
+            }
+        }
         //
         content += `app.enable('trust proxy');
-        app.use(cors({ origin:true })); //{ optionsSuccessStatus: 200 }
-        app.options('*',cors({ origin:true }));
+        app.options('*',cors());
+        app.use(cors(${this.jsDump(cors_options)}));
         app.use(compress);
         app.use(helmet());
         app.disable('x-powered-by');
