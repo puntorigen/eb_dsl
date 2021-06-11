@@ -94,7 +94,7 @@ export default class eb extends base_deploy {
                 'aws:elasticbeanstalk:application:environment' : {
                     APP_PORT: this.context.x_state.central_config.port,
                     CLUSTER: 1,
-                    START_TYPE: 'development'
+                    START_TYPE: 'production'
                 }
             }
         };

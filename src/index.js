@@ -723,8 +723,8 @@ function onListening() {
         }
         //
         content += `app.enable('trust proxy');
-        app.use(cors({ optionsSuccessStatus: 200 }));
-        app.options('*',cors());
+        app.use(cors({ origin:true })); //{ optionsSuccessStatus: 200 }
+        app.options('*',cors({ origin:true }));
         app.use(compress);
         app.use(helmet());
         app.disable('x-powered-by');

@@ -13,7 +13,8 @@ let myArgs = mri(process.argv, {
         debug: ['d','debug'],
         justgit: ['g','justgit'],
         nodeploy: ['n','nodeploy'],
-        deploy: ['p','deploy']
+        deploy: ['p','deploy'],
+        noenvs: ['ignore-envs']
     },
     boolean: ['clean','debug','justgit'],
     default: {
@@ -50,6 +51,9 @@ if (myArgs.cpu) {
             x_console.out({ message:'-c, --cpu [float]\t\tamount of cpus to use. default:'+require('os').cpus().length, color:'cyan' });
             x_console.out({ message:'-d, --debug\t\t\tturns verbose logging on', color:'cyan' });
             x_console.out({ message:'-h, --help\t\t\tthis console output', color:'cyan' });
+            console.log('');
+            x_console.out({ message:'Special options:', color:'brightYellow' });
+            x_console.out({ message:'--ignore-envs\t\t\tIgnore setting env variables (config keys)', color:'yellow' });
             console.log('');
         //}
     };
