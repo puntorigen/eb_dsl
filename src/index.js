@@ -113,7 +113,7 @@ export default class eb_dsl extends concepto {
                     tmp.dsl_git_path = path.dirname(path.resolve(this.x_flags.dsl));
                     tmp.non_target = path.join(tmp.dsl_git_path,path.basename(this.x_flags.dsl).replace('_git.dsl','.dsl'));
                     tmp.exists_non = await this.exists(tmp.non_target);
-                    if (!tmp.exists_non) {
+                    if (true) { //!tmp.exists_non - always overwrite x.dsl
                         this.x_console.outT({ message:'Expanding secrets into '+curr_dsl.replace('_git.dsl','.dsl'), color:'cyan' });
                         // expand secret nodes into non _git.dsl version config key
                         let dsl_parser = require('dsl_parser');
@@ -423,7 +423,7 @@ node_modules/
 # Concepto files
 .concepto/
 aws_backup.ini
-/eb.dsl
+eb.dsl
 store/
 ${this.x_state.dirs.compile_folder}/`;
             await fs.writeFile(`${this.x_state.dirs.base}.gitignore`, git, 'utf-8'); //.gitignore
