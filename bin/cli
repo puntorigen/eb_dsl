@@ -46,7 +46,6 @@ let getSerial = function() {
     let x_console = new open_console();
     let serial = await getSerial();
     x_console.title({ title:`Concepto EB_DSL Compiler v${pkg.version}`, titleColor:'brightYellow', color:'green' });
-    x_console.out({ message:`computer serial number: ${serial}`, color:'dim' });
     //
     let savePassword = async function(args) {
         let path = require('path'), fs = require('fs').promises;
@@ -70,12 +69,11 @@ let getSerial = function() {
                 }
             }            
             if ((await exists(_secret_file))) {
-                //let serial = require('serial-number');
-                x_console.out({ message:`.secrets-pass file found on current directory; decrypting`, color:'dim'});
+                x_console.out({ message:`.secrets-pass file found on current directory`, color:'dim'});
                 try {
                     let fdata = await fs.readFile(_secret_file,'utf-8');
                     args.secrets_pass = encrypt.decrypt(fdata,serial);
-                    x_console.out({ message:`secret pass read successfully: ${args.secrets_pass}`, color:'yellow' });
+                    x_console.out({ message:`.secret-pass read successfully!\n`, color:'brightGreen' });
                 } catch(badpass) {
                     x_console.out({ message:`error reading .secret-pass file (maybe you changed computer?)\n`, color:'brightRed' });
                 }
@@ -106,6 +104,8 @@ let getSerial = function() {
             x_console.out({ message:'--secrets-pass-save [string]\tSave to disk the given secret password encrypted', color:'yellow' });
             console.log('');
         //}
+        //copyright
+        x_console.out({ message:`Copyright © 2021, Punto Origen SpA. All rights reserved.`, color:'dim' });
     };
     //save or recover password
     myArgs = await savePassword(myArgs);
