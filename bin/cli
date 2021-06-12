@@ -14,7 +14,7 @@ let myArgs = mri(process.argv, {
         justgit: ['g','justgit'],
         nodeploy: ['n','nodeploy'],
         deploy: ['p','deploy'],
-        noenvs: ['ignore-envs']
+        secrets_pass: ['secrets-pass']
     },
     boolean: ['clean','debug','justgit'],
     default: {
@@ -53,7 +53,7 @@ if (myArgs.cpu) {
             x_console.out({ message:'-h, --help\t\t\tthis console output', color:'cyan' });
             console.log('');
             x_console.out({ message:'Special options:', color:'brightYellow' });
-            x_console.out({ message:'--ignore-envs\t\t\tIgnore setting env variables (config keys)', color:'yellow' });
+            x_console.out({ message:'--secrets-pass [string]\t\tSecret password for encrypting / decrypting config->secrets', color:'yellow' });
             console.log('');
         //}
     };
