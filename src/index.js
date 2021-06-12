@@ -416,14 +416,16 @@ export default class eb_dsl extends concepto {
 .DS_Store?
 _MACOSX/
 Thumbs.db
+# NPM
+package.json
+package-lock.json
+node_modules/
 # Concepto files
-dsl_cache/
-dsl_cache.ini
-tmp.ini
+.concepto/
+aws_backup.ini
 /eb.dsl
 store/
-${this.x_state.dirs.compile_folder}/node_modules/
-${this.x_state.dirs.compile_folder}/secrets/`;
+${this.x_state.dirs.compile_folder}/`;
             await fs.writeFile(`${this.x_state.dirs.base}.gitignore`, git, 'utf-8'); //.gitignore
     }
 
