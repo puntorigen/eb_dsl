@@ -100,7 +100,7 @@ export default class eb_dsl extends concepto {
         let encrypt = require('encrypt-with-password');
         let curr_dsl = path.basename(this.x_flags.dsl);
         if (curr_dsl.includes('_git.') && resp[':secrets']) {
-            this.x_console.outT({ message:`Secrets node detected! ${curr_dsl}`, color:'brightCyan' });
+            this.x_console.outT({ message:`Secrets node detected!`, color:'brightCyan' });
             if (this.x_config.secrets_pass && this.x_config.secrets_pass!='') {
                 this.x_console.outT({ message:'Decrypting config->secrets', color:'brightGreen' });
                 try {
