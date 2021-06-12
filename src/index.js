@@ -423,6 +423,7 @@ node_modules/
 # Concepto files
 .concepto/
 aws_backup.ini
+.secrets-pass
 eb.dsl
 store/
 ${this.x_state.dirs.compile_folder}/`;
