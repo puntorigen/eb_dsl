@@ -55,7 +55,7 @@ let getSerial = function() {
         } catch(e) {
             return false;
         }
-    }   
+    }
     let savePassword = async function(args) {
         let path = require('path'), fs = require('fs').promises;
         let _secret_file = path.join(process.cwd(),'.secrets-pass');
@@ -116,7 +116,7 @@ let getSerial = function() {
         let test = path.join(process.cwd(),'eb.dsl');
         if ((await exists(test))) {
             myArgs.src = test;
-            x_console.out({ message:`vue.dsl file found on current directory, using it as source`, color:'dim'});
+            x_console.out({ message:`eb.dsl file found on current directory, using it as source`, color:'dim'});
         }
     }
     //save or recover password
