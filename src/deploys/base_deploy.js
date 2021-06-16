@@ -28,6 +28,7 @@ export default class base_deploy {
     // building methods
     async base_build() {
         // builds the project
+        let ci = require('ci-info');
         let spawn = require('await-spawn'), path = require('path'), fs = require('fs').promises;
         //let ora = require('ora');
         let node_modules_final = path.join(this.context.x_state.dirs.app,'node_modules');
@@ -70,17 +71,23 @@ export default class base_deploy {
         // issue npm run build
         spinner.start(`Building NodeJS project`);
         try {
-            npm.build = await spawn('npm',['run','build'],{ cwd:this.context.x_state.dirs.app });
+            if (ci.isCI==false) {  
+                npm.build = await spawn('npm',['run','build'],{ cwd:this.context.x_state.dirs.app });
+            } else {
+                npm.build = await spawn('npm',['run','build'],{ cwd:this.context.x_state.dirs.app, stdio:'inherit' });
+            }
             spinner.succeed('Project built successfully');
         } catch(nb) { 
             npm.build = nb; 
             spinner.fail('Build failed');
-            this.context.x_console.out({ message:`Building NodeJS again to show error in console`, color:'red' });
-            //build again with output redirected to console, to show it to user
-            try {
-                console.log('\n');
-                npm.build = await spawn('npm',['run','dev'],{ cwd:this.context.x_state.dirs.app, stdio:'inherit', timeout:15000 });
-            } catch(eg) {
+            if (ci.isCI==false) {            
+                this.context.x_console.out({ message:`Building NodeJS again to show error in console`, color:'red' });
+                //build again with output redirected to console, to show it to user
+                try {
+                    console.log('\n');
+                    npm.build = await spawn('npm',['run','dev'],{ cwd:this.context.x_state.dirs.app, stdio:'inherit', timeout:15000 });
+                } catch(eg) {
+                }
             }
             errors.push(nb);
         }
