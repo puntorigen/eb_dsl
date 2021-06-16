@@ -1338,21 +1338,19 @@ module.exports = async function(context) {
                 let resp = context.reply_template({
                     state
                 });
-                let tmp = { var:node.id, method:'getSpeed' };
+                let tmp = { var:node.id, e_method:'', e_close:'' };
                 tmp.var=node.text.split(',').splice(-1)[0].trim();
                 let attr = aliases2params('def_geo_velocidad', node, false, 'this.');
-                if (attr.tipo=='mts') {
-                    attr.tipo = '';
-                } else {
-                    attr.tipo = `,'${attr.tipo}'`;
-                    tmp.method = 'convertSpeed';
+                if (attr.tipo!='mts') {
+                    tmp.e_method = 'geolib.convertSpeed(';
+                    tmp.e_close = `),'${attr.tipo}'`;
                 }
                 // install plugin.
                 context.x_state.npm['geolib'] = "*";
                 // code
                 if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
                 resp.open += `let geolib = require('geolib');\n`;
-                resp.open += `var ${tmp.var} = geolib.${tmp.method}(${context.jsDump({
+                resp.open += `var ${tmp.var} = ${tmp.method}geolib.getSpeed(${context.jsDump({
                     latitude:attr.latitude,
                     longitude:attr.longitude,
                     time:attr.time
@@ -1360,7 +1358,7 @@ module.exports = async function(context) {
                     latitude:attr.latitude2,
                     longitude:attr.longitude2,
                     time:attr.time2
-                })}${attr.tipo});\n`;
+                })}${tmp.e_close});\n`;
                 return resp;
             }
         },
@@ -1705,6 +1703,7 @@ module.exports = async function(context) {
                 } else {
                     resp.open += `const ${tmp.var} = (await axios.request(${context.jsDump(config)})).data;\n`;
                 }
+                context.x_state.functions[resp.state.current_func].imports['axios'] = 'axios';
                 //return
                 return resp;
             }
