@@ -23,6 +23,72 @@ export default class eb extends base_deploy {
         console.log(logo_txt);
     }
 
+    async base_build() {
+        // builds the project
+        let ci = require('ci-info');
+        let spawn = require('await-spawn'), path = require('path'), fs = require('fs').promises;
+        //let ora = require('ora');
+        let node_modules_final = path.join(this.context.x_state.dirs.app,'node_modules');
+        let node_package = path.join(this.context.x_state.dirs.app,'package.json');
+        let npm={}, errors=[];
+        this.context.x_console.outT({ message:`Building project`, color:'cyan' });
+        let spinner = this.context.x_console.spinner({ message:'Building project' });
+        let node_modules_exist = await this.exists(node_modules_final);
+        let node_package_exist = await this.exists(node_package);
+        if (node_modules_exist && node_package_exist) {
+            //test if every package required is within node_modules
+            spinner.start(`Some npm packages where installed; checking ..`);
+            let pkg = JSON.parse(((await fs.readFile(node_package, 'utf-8'))));
+            let all_ok = true;
+            for (let pk in pkg.dependencies) {
+                let tst_dir = path.join(this.context.x_state.dirs.app,'node_modules',pk);
+                let tst_exist = await this.exists(tst_dir);
+                if (!tst_exist) all_ok = false;
+            } 
+            node_modules_exist=all_ok;
+            if (all_ok) {
+                spinner.succeed('Using existing npm packages');
+            } else {
+                spinner.warn('Some packages are new, requesting them');
+            }
+        }
+        // issue npm install (400mb)
+        if (!node_modules_exist) {
+            spinner.start(`Installing npm packages`);
+            //this.x_console.outT({ message:`Installing npm packages` });
+            try {
+                npm.install = await spawn('npm',['install'],{ cwd:this.context.x_state.dirs.app }); //, stdio:'inherit'
+                spinner.succeed(`npm install succesfully`);
+            } catch(n) { 
+                npm.install=n; 
+                spinner.fail('Error installing npm packages');
+                errors.push(n);
+            }
+        }
+        // issue npm run build (just docs; not working on CI 16-jun-21)
+        if (ci.isCI==false) {
+            spinner.start(`Building NodeJS project`);
+            try {
+                npm.build = await spawn('npm',['run','build'],{ cwd:this.context.x_state.dirs.app });
+                spinner.succeed('Project built successfully');
+            } catch(nb) { 
+                npm.build = nb; 
+                spinner.fail('Build failed');
+                if (ci.isCI==false) {            
+                    this.context.x_console.out({ message:`Building NodeJS again to show error in console`, color:'red' });
+                    //build again with output redirected to console, to show it to user
+                    try {
+                        console.log('\n');
+                        npm.build = await spawn('npm',['run','dev'],{ cwd:this.context.x_state.dirs.app, stdio:'inherit', timeout:15000 });
+                    } catch(eg) {
+                    }
+                }
+                errors.push(nb);
+            }
+        }
+        return errors;
+    }
+
     async deploy() {
         let build={};
         this.context.x_console.title({ title:'Deploying to Amazon AWS Elastic Bean', color:'green' });
