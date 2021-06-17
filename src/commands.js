@@ -1684,11 +1684,12 @@ module.exports = async function(context) {
                 //add comment
                 if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
                 //prepare url
+                /* was already prepared
                 if (node.icons.includes('bell') && config.url.includes('**')) {
                     config.url = getTranslatedTextVar(config.url,true);
                 } else {
                     config.url = `'${config.url}'`;
-                }
+                }*/
                 tmp.url = config.url;
                 //join as object
                 if (tmp.method.toLowerCase()=='get') {
