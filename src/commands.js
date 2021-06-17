@@ -1350,7 +1350,7 @@ module.exports = async function(context) {
                 // code
                 if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
                 resp.open += `let geolib = require('geolib');\n`;
-                resp.open += `var ${tmp.var} = ${tmp.method}geolib.getSpeed(${context.jsDump({
+                resp.open += `var ${tmp.var} = ${tmp.e_method}geolib.getSpeed(${context.jsDump({
                     latitude:attr.latitude,
                     longitude:attr.longitude,
                     time:attr.time
