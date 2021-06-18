@@ -847,27 +847,26 @@ module.exports = async function(context) {
 
         'def_npm_instalar': {
             x_icons: 'desktop_new',
-            x_text_pattern: [`npm:+(install|instalar) "*"`,`npm:+(install|instalar) "*",*`],
+            x_text_contains: `npm:instal,",,`,
+            //x_text_pattern: [`npm:+(install|instalar) "*"`,`npm:+(install|instalar) "*",*`],
             x_level: '>2',
             hint: 'Instala el paquete npm indicado entrecomillas y lo instancia en la página (import:true) o función actual, o lo asigna a la variable indicada luego de la coma.',
             func: async function(node, state) {
                 let resp = context.reply_template({
                     state
                 });
-                let defaults = { text:node.text, tipo:'import', tipo_:'', version:'*', git:'', init:'' };
+                let defaults = { text:node.text, tipo:'import', tipo_:'', version:'*', git:'', init:'', var:'' };
                 let attr = aliases2params('def_npm_instalar', node);  
                 attr = {...defaults, ...attr};
-                if (attr.import && attr.import!='true') attr.tipo_ = attr.import;
-                attr.text = context.dsl_parser.findVariables({
-                    text: node.text,
-                    symbol: '"',
-                    symbol_closing: '"'
-                }).trim();
-                attr.var = attr.tipo_ = node.text.split(',').pop();
+                let extract = require('extractjs')();
+                let elements = extract(`npm:{cmd} "{package}", {var}`,node.text);
+                if (attr.import && (attr.import!='true' || attr.import!=true)) attr.tipo_ = attr.import;
+                attr.text = elements.package.trim();
+                attr.var = attr.tipo_ = elements.var.trim();
                 //code
                 context.x_state.npm[attr.text] = attr.version;
                 if (node.text_note != '') resp.open = `// ${node.text_note.cleanLines()}\n`;
-                if (!attr.require) {
+                if (!attr.require && attr.var=='') {
                     if ('current_func' in resp.state) {
                         context.x_state.functions[resp.state.current_func].imports[attr.text] = attr.tipo_;
                     }
