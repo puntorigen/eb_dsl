@@ -16,7 +16,8 @@ let myArgs = mri(process.argv, {
         deploy: ['p','deploy'],
         secrets_pass: ['secrets-pass'],
         save_password: ['secrets-pass-save'],
-        silent: ['--silent']
+        silent: ['silent'],
+        diff_from: ['diff-from']
     },
     boolean: ['clean','debug','justgit'],
     default: {
@@ -106,6 +107,7 @@ let getSerial = function() {
             x_console.out({ message:'Special options:', color:'brightYellow' });
             x_console.out({ message:'--secrets-pass [string]\t\tSecret password for encrypting / decrypting config->secrets', color:'yellow' });
             x_console.out({ message:'--secrets-pass-save [string]\tSave to disk the given secret password encrypted', color:'yellow' });
+            x_console.out({ message:'--diff-from [file]\t\tCreates a eb_diff.dsl file with the differences between the --source file and this one', color:'yellow' });
             x_console.out({ message:'--silent\t\t\tCompiles in the most quiet mode posible (CI default mode)', color:'yellow' });
             console.log('');
         //}
