@@ -431,6 +431,7 @@ node_modules/
 aws_backup.ini
 .secrets-pass
 eb.dsl
+eb_*.dsl
 store/
 ${this.x_state.dirs.compile_folder}/`;
             await fs.writeFile(`${this.x_state.dirs.base}.gitignore`, git, 'utf-8'); //.gitignore
