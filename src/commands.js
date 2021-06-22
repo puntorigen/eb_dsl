@@ -2699,7 +2699,7 @@ module.exports = async function(context) {
                 context.x_state.functions[resp.state.current_func].imports['jimp'] = 'jimp';
                 //code
                 if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
-                resp.open += `await ${tmp.text}.composite(${context.jsDump(data).replaceAll('[','').replaceAll(']','')});\n`;
+                resp.open += `await ${tmp.text}.mask(${context.jsDump(data).replaceAll('[','').replaceAll(']','')});\n`;
                 return resp;
             }
         },
