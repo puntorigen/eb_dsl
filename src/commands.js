@@ -605,7 +605,7 @@ module.exports = async function(context) {
                     params.expresion = `_.contains(${elements.variable},${escape_value(elements.value)})`;
 
                 } else if ('contiene,contains'.split(',').includes(elements.operator)) {
-                    params.expresion = `${elements.variable}.toLowerCase().indexOf(${escape_value(elements.value)}.toLowerCase())!=-1`;
+                    params.expresion = `(${elements.variable}+'').toLowerCase().indexOf((${escape_value(elements.value)}+'').toLowerCase())!=-1`;
 
                 } else {
                     //operator not defined
