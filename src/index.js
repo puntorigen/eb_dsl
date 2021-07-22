@@ -1,7 +1,7 @@
-//const concepto = require('concepto');
+const concepto = require('concepto');
 //import { timingSafeEqual } from 'crypto';
 //import { isContext, runInThisContext } from 'vm';
-import concepto from '../../concepto/src/index'
+//import concepto from '../../concepto/src/index'
 /**
  * Concepto EB DSL Class: A class for compiling eb.dsl Concepto diagrams into NodeJS Express backend services.
  * @name 	eb_dsl
