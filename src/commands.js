@@ -344,14 +344,14 @@ module.exports = async function(context) {
                 //write
                 if (node.text_note != '') resp.open = `// ${node.text_note.cleanLines()}\n`;
                 //context.debug('PABLO debug, comparing ',{ func_name:tmp.name, currentpath:context.x_state.functions[resp.state.current_func].path, func_path:tmp.func.path });
-                if (context.x_state.functions[resp.state.current_func].path.split('/')[0]==tmp.func.path.split('/')[0]) {
+                if (context.x_state.functions[resp.state.current_func].path.split('/')[1]==tmp.func.path.split('/')[1]) {
                     // target function is within our own model
                     resp.open += `var ${tmp.var} = (await self.${tmp.name}({ body:${context.jsDump(node.attributes)} }, res, true ));\n`;
                 } else {
                     // target function is on another file
-                    tmp.model = tmp.func.path.split('/')[0];
+                    tmp.model = tmp.func.path.split('/')[1];
                     resp.open += `let import_${node.id} = require('./${tmp.model}');\n`;
-                    resp.open += `var ${tmp.var} = (await import_${node.id}).${tmp.name}({ body:${context.jsDump(node.attributes)} }, res, true ));\n`;
+                    resp.open += `var ${tmp.var} = (await import_${node.id}).${tmp.name}({ body:${context.jsDump(node.attributes)} }, res, true );\n`;
                 }
                 //return
                 return resp;
