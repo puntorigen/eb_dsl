@@ -1029,7 +1029,7 @@ module.exports = async function(context) {
                     context.x_state.functions[resp.state.current_func].used_models[tmp.model]='';
                 }
                 //attributes
-                tmp.info = { _fields:[], _order:[], _join:{}, _where:{} };
+                tmp.info = { _fields:[], _order:[], _join:{}, _where:{}, _group:[] };
                 let extract = require('extractjs')();
                 let isNumeric = function(n) {
                     return !isNaN(parseFloat(n)) && isFinite(n);
@@ -1052,13 +1052,20 @@ module.exports = async function(context) {
                     let value = node.attributes[keym];
                     // fields attr
                     if ([':fields', ':campos'].includes(key)) {
-                        if (value.includes(':unicos')) {
+                        if (value.includes(':unicos') || value.includes(':sum')) {
                             let fields = value.split(',');
                             for (let field_x in fields) {
                                 let field = fields[field_x]; 
                                 if (field.includes(':unicos')==true) {
                                     let name = field.split(':')[0];
                                     tmp.info._fields.push(`[Sequelize.fn('DISTINCT', Sequelize.col('${name}')), '${name}']`);
+                                } else if (field.includes(':sumar')==true) {
+                                    let name = field.split(':')[0];
+                                    tmp.info._fields.push(`[Sequelize.fn('sum', Sequelize.col('${name}')), '${name}']`);
+                                } else if (field.includes(':agrupar')==true) {
+                                    let name = field.split(':')[0];
+                                    tmp.info._group.push(name);
+                                    tmp.info._fields.push(name);
                                 } else {
                                     tmp.info._fields.push(field);
                                 }
@@ -1173,6 +1180,7 @@ module.exports = async function(context) {
                 let obj = { where:tmp.info._where, tableHint: 'Sequelize.TableHints.NOLOCK' };
                 if (tmp.info._order.length>0) obj.order=[tmp.info._order];
                 if (tmp.info._fields.length>0) obj.attributes=tmp.info._fields;
+                if (tmp.info._group.length>0) obj.group=tmp.info._group;
                 if (tmp.info._limit) obj.limit=tmp.info._limit;
                 //add join info
                 for (let model in tmp.info._join) {
