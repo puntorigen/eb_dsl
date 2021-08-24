@@ -173,7 +173,7 @@ module.exports = async function(context) {
     };
     
     return {
-        //'cancel': {...null_template,...{ x_icons:'button_cancel'} },
+        'cancel': {...null_template,...{ x_icons:'button_cancel'} },
         'meta': {...null_template, ...{
                 name: 'AWS EB / NodeJS Express',
                 version: '0.0.2',
