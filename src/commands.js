@@ -1515,9 +1515,9 @@ module.exports = async function(context) {
                     tmp.source = `'${tmp.source}'`;
                 }
                 //code
-                context.x_state.npm['data-uri-to-buffer'] = '*';
+                context.x_state.npm['data-uri-to-buffer'] = '3.0.1';
                 if (node.text_note != '') resp.open += `// ${node.text_note.cleanLines()}\n`;
-                resp.open += `let ${tmp.var} = (require('data-uri-to-buffer')).dataUriToBuffer(${tmp.source});`;
+                resp.open += `let ${tmp.var} = require('data-uri-to-buffer')(${tmp.source});`;
                 return resp;
             }
         },
