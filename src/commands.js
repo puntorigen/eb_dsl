@@ -993,7 +993,7 @@ module.exports = async function(context) {
                 let resp = context.reply_template({
                     state
                 });
-                let tmp = { var:node.id+'_', data:{}, model:'' };
+                let tmp = { var:node.id+'_', data:{}, model:'', use_var:false };
                 if (node.text.includes(',')) tmp.var=node.text.split(',').splice(-1)[0].trim();
                 tmp.model = context.dsl_parser.findVariables({
                     text: node.text,
@@ -1073,6 +1073,9 @@ module.exports = async function(context) {
                         } else {
                             tmp.info._fields = value.split(',');
                         }
+                    //
+                    } else if (key==':var') {
+                        tmp.use_var=true;
                     //order by attr
                     } else if (['order by', '_order by', '_orderby',':orderby',':order by'].includes(key)) {
                         let order = value.split(' ');
@@ -1204,7 +1207,12 @@ module.exports = async function(context) {
                     })});\n`;
                 }
                 // findAll code
-                resp.open += `let ${tmp.var} = await ${tmp.model}.findAll(${data}, { raw:true });\n`;
+                if (tmp.use_var==true) {
+                    resp.open += 'var ';
+                } else {
+                    resp.open += 'let ';
+                }
+                resp.open += `${tmp.var} = await ${tmp.model}.findAll(${data}, { raw:true });\n`;
                 //resp.open += `let ${node.id}_where = ${context.jsDump(tmp.info._where,'Sequelize.')};\n`; //where for modificar/eliminar commands.
                 //console.log('PABLO debug consultar modelo',data);
                 resp.state.meta = tmp.info;
