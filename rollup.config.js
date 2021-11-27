@@ -1,6 +1,7 @@
 import babel            from '@rollup/plugin-babel';
 import { nodeResolve }  from '@rollup/plugin-node-resolve';
 import copy             from 'rollup-plugin-copy-assets';
+//import typescript       from '@rollup/plugin-typescript';
 //import compiler         from '@ampproject/rollup-plugin-closure-compiler';
 
 const config = {
@@ -15,6 +16,7 @@ const config = {
 
   plugins: [
     nodeResolve(),
+    //typescript(),
     babel({
       presets: [
         ['@babel/preset-env',
