@@ -288,7 +288,7 @@ export default class eb_dsl extends concepto {
         this.x_state.npm['nodemon']='*';
         this.x_state.npm['postman-request']='*';
         this.x_state.npm['request']='*';
-        this.x_state.npm['wait.for']='*';
+        //this.x_state.npm['wait.for']='*';
         this.x_state.npm['serve-favicon']='*'; // favicon support
 
         // FAVICON
@@ -828,12 +828,11 @@ function onListening() {
                     schedule = require('node-schedule'),
                     // Request: es utilizado para realizar las llamadas get y post hacia otros servicios o servicios internos.
                     request = require('request'),
-                    wait = require('wait.for'),
                     compress = require('compression')();
                 // Define en las variables del enviroment el TimeZone a utc.
                 process.env.TZ = 'utc';
                 
-                cluster(function(worker) {
+                cluster(async function(worker) {
                 var app = express();
                 var port = process.env.APP_PORT;
         `;
@@ -1032,7 +1031,7 @@ function onListening() {
  * Servicios en ruta /${file}
  * @namespace {object} ${file}
  */
-var express = require('express'), wait = require('wait.for');
+var express = require('express');
 var router = express.Router();
 var ${file} = require('../models/${file}');
             `;
@@ -1095,8 +1094,9 @@ var ${file} = require('../models/${file}');
                     }
                     doc += ` */\n`;
                     // router code
-                    doc += `router.${_jsdoc.method}('${_jsdoc.path}', function(req, res, next) {
-                        wait.launchFiber(${file}.${func}, req, res);
+                    doc += `router.${_jsdoc.method}('${_jsdoc.path}', async function(req, res, next) {
+                        //wait.launchFiber(${file}.${func}, req, res);
+                        await ${file}.${func}(req, res);
                     });\n`;
                     // add doc to content if func is visible
                     if (express.models[file].functions[func].visible==true) {
@@ -1133,7 +1133,7 @@ var ${file} = require('../models/${file}');
             // write header of model
             content += `const Sequelize = require('sequelize'); // sequelize handler
             var moment = require('moment');
-            var wait = require('wait.for');
+            //var wait = require('wait.for');
             var util = require('util');
             var async = require('async');
             var _ = require('underscore');
