@@ -1,6 +1,6 @@
 {
   "name": "@concepto/eb",
-  "version": "1.1.7",
+  "version": "1.1.71",
   "description": "Concepto DSL - visually create and maintain modern node.js based apps (@eb)",
   "keywords": [
     "creador",
@@ -35,6 +35,7 @@
   "dependencies": {
     "@concepto/interface": "*",
     "@concepto/dsl_parser": "*",
+    "@concepto/console": "*",
     "anzip": "^0.2.0",
     "asciify-image": "^0.1.6",
     "await-spawn": "^4.0.2",

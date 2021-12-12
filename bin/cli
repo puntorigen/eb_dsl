@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 process.env.UV_THREADPOOL_SIZE=8*require('os').cpus().length;
-const open_console = require('open_console');
+const open_console = require('@concepto/console');
 const pkg = require('../package.json');
 const eb = require('../lib/index');
 const mri = require('mri');
