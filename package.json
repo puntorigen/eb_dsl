@@ -1,6 +1,6 @@
 {
   "name": "@concepto/eb",
-  "version": "1.1.73",
+  "version": "1.1.74",
   "description": "Concepto DSL - visually create and maintain modern node.js based apps (@eb)",
   "keywords": [
     "creador",
