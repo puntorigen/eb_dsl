@@ -1147,6 +1147,11 @@ module.exports = async function(context) {
                                 operator = var_operator;
                             } else {
                                 value = value.substr(1,value.length-1);
+                                if (value.charAt(0)=='=') {
+                                    // gte / lte
+                                    operator += '=';
+                                    value = value.substr(1,value.length-1);
+                                }
                             }
                                 /*if (value.charAt(0)=='`') {
                                 operator = value.replaceAll('`','').charAt(0);
@@ -1154,11 +1159,15 @@ module.exports = async function(context) {
                             } else {
                                 value = value.substr(1,value.length-1);
                             }*/
-                            if (operator=='<') {
+                            if (operator=='<=') {
+                                tmp.info._where[keym] = { '[Sequelize.Op.lte]':escapeKeyVars(value) };
+                            } else if (operator=='>=') {
+                                tmp.info._where[keym] = { '[Sequelize.Op.gte]':escapeKeyVars(value) };
+                            } else if (operator=='<') {
                                 tmp.info._where[keym] = { '[Sequelize.Op.lt]':escapeKeyVars(value) };
                             } else if (operator=='>') {
-                                tmp.info._where[keym] = { '[Sequelize.Op.gt]':escapeKeyVars(value) };
-                                
+                                tmp.info._where[keym] = { '[Sequelize.Op.gt]':escapeKeyVars(value) };                                
+
                             } else {
                                 tmp.info._where[keym] = value;
                             }
