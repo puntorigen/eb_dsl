@@ -1572,7 +1572,7 @@ var ${file} = require('../models/${file}');
                     return Models;
                 }
 
-                await sequelize.sync({ alter:true });
+                await sequelize.sync({ alter:${this.x_state.central_config.dbalter} });
                 await sequelize.authenticate()
                 connection.isConnected = true;
                 console.log('=> Created a new connection.');
@@ -1601,6 +1601,7 @@ var ${file} = require('../models/${file}');
             log: 'console',
             debug: false,
             dblog: true,
+            dbalter: true,
             deploy: false,
             stage: '',
             timeout: 30,
