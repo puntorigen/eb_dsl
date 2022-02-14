@@ -1532,7 +1532,7 @@ var ${file} = require('../models/${file}');
                     freezeTableName: true
                 },
                 pool: {
-                    max: 10,
+                    max: this.x_state.central_config.pool_max,
                     min: 1,
                     acquire: 12000,
                     idle: 12000,
@@ -1641,6 +1641,7 @@ var ${file} = require('../models/${file}');
             stage: '',
             timeout: 30,
             modelos: 'aurora',
+            pool_max: 10,
             doc: false,
             rtc: false,
             'rtc:admin':'',
