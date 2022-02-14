@@ -808,6 +808,7 @@ module.exports = async function(context) {
             x_icons: 'clanbomber',
             x_not_icons: 'desktop_new',
             x_level: '>1',
+            x_watch: `x_state.central_config.log`,
             hint: 'Emite su texto a la consola. Soporta mostrar los datos/variables de sus atributos.',
             func: async function(node, state) {
                 let resp = context.reply_template({
@@ -840,7 +841,11 @@ module.exports = async function(context) {
                 });
                 //code
                 if (node.text_note != '') resp.open = `// ${node.text_note.cleanLines()}\n`;
-                resp.open += `console.log(${tmp.text},${context.jsDump(attrs)});\n`;
+                if (context.x_state.central_config.log && context.x_state.central_config.log=='none') {
+                    resp.open += `//console-none:${tmp.text}\n`;
+                } else {
+                    resp.open += `console.log(${tmp.text},${context.jsDump(attrs)});\n`;
+                }
                 return resp;
             }
         },
