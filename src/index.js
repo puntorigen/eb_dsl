@@ -252,6 +252,7 @@ export default class eb_dsl extends concepto {
         this.x_state.npm['underscore']='*';
         this.x_state.npm['axios']='*';
         // additional required dependencies
+        this.x_state.npm['colors']='*';
         this.x_state.npm['aws-sdk']='*';
         this.x_state.npm['file-type']='*';
         this.x_state.npm['async']='*';
@@ -1522,7 +1523,7 @@ var ${file} = require('../models/${file}');
                 }
             }
             let seq_config = {
-                logging: this.x_state.central_config.dblog,
+                logging: (this.x_state.central_config.dblog==true)?'func:logging':false,
                 dialect: 'mysql',
                 dialectOptions: {
                     connectTimeout: 60000
@@ -1532,7 +1533,7 @@ var ${file} = require('../models/${file}');
                 },
                 pool: {
                     max: 10,
-                    min: 0,
+                    min: 1,
                     acquire: 12000,
                     idle: 12000,
                     evict: 12000
@@ -1541,11 +1542,45 @@ var ${file} = require('../models/${file}');
                 host: 'process.env.AURORA_HOST',
                 port: 'process.env.AURORA_PORT'
             };
+            if (this.x_state.central_config.dblog==true) {
+                seq_config.benchmark = true;
+            }
+            content += `const colors = require('colors/safe');\n`;
+            content += `const logging = function(logStr, execTime, options) {
+                if (!options) {
+                    options = execTime;
+                    execTime = undefined;
+                }
+                    
+                let col = null;
+                switch (options.type) {
+                    case 'SELECT':
+                        col = colors.blue.bold;
+                        break;
+                    case 'UPDATE':
+                        col = colors.yellow.bold;
+                        break;
+                    case 'INSERT':
+                        col = colors.green.bold;
+                        break;
+                    default:
+                        col = colors.white.bold;
+                        break;
+                }
+                if (execTime) {
+                    if (execTime >= 10) {
+                        col = colors.red.bold;
+                        console.log(colors.magenta.bold(\`[\${execTime} ms]\`), col(logStr));
+                    } else {
+                        console.log(col(logStr));
+                    }
+                }
+            }\n`;
             content += `const sequelize = new Sequelize(
                 process.env.AURORA_NAME,
                 process.env.AURORA_USER,
                 process.env.AURORA_PASSWORD,
-                ${this.jsDump(seq_config)}
+                ${this.jsDump(seq_config).replace(`'func:logging'`,`logging`)}
             );
             // check if given database exists, or create it
             sequelize.query("CREATE DATABASE IF NOT EXISTS "+process.env.AURORA_NAME).then(function(){});\n`;
