@@ -25,7 +25,7 @@ export default class local extends base_deploy {
             // builds the app
             build.try_build = await this.base_build(); 
             if (build.try_build.length>0) {
-                this.x_console.outT({ message:`There was an error building the project.`, color:'red' });
+                this.context.x_console.outT({ message:`There was an error building the project.`, color:'red' });
                 return false;
             }
             
