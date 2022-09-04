@@ -270,6 +270,10 @@ export default class eb_dsl extends concepto {
         this.x_state.npm['express']='*';
         this.x_state.npm['express-cluster']='*';
         this.x_state.npm['express-session']='*';
+        // add apicache support (cache per endpoint), node-cache (cache per function)
+        this.x_state.npm['apicache']='*';
+        this.x_state.npm['node-cache']='*';
+        this.x_state.npm['object-hash']='*';
         // express protection and related libraries
         this.x_state.npm['helmet']='*';
         this.x_state.npm['cors']='*';
@@ -967,6 +971,10 @@ function onListening() {
         let content = `var express = require('express');
         var router = express.Router();
         var path = require('path');
+
+        var apicache = require('apicache');
+        var cache = apicache.middleware;
+
         // rutas por defecto para documentacion
         router.get(['/*'], function(req, res, next) {
             switch (req.url) {
@@ -1034,6 +1042,10 @@ function onListening() {
  */
 var express = require('express');
 var router = express.Router();
+
+var apicache = require('apicache');
+var cache = apicache.middleware;
+
 var ${file} = require('../models/${file}');
             `;
             if (Object.keys(unique).length>0) content += `// declaracion de sub-rutas en esta ubicacion\n`;
@@ -1095,10 +1107,15 @@ var ${file} = require('../models/${file}');
                     }
                     doc += ` */\n`;
                     // router code
-                    doc += `router.${_jsdoc.method}('${_jsdoc.path}', async function(req, res, next) {
-                        //wait.launchFiber(${file}.${func}, req, res);
-                        await ${file}.${func}(req, res);
-                    });\n`;
+                    if (express.models[file].functions[func].cache!='') {
+                        doc += `router.${_jsdoc.method}('${_jsdoc.path}', cache('${express.models[file].functions[func].cache}'), async function(req, res, next) {
+                            await ${file}.${func}(req, res);
+                        });\n`;
+                    } else {
+                        doc += `router.${_jsdoc.method}('${_jsdoc.path}', async function(req, res, next) {
+                            await ${file}.${func}(req, res);
+                        });\n`;
+                    }
                     // add doc to content if func is visible
                     if (express.models[file].functions[func].visible==true) {
                         content += doc+'\n';
@@ -1134,7 +1151,11 @@ var ${file} = require('../models/${file}');
             // write header of model
             content += `const Sequelize = require('sequelize'); // sequelize handler
             var moment = require('moment');
-            //var wait = require('wait.for');
+            //cache support
+            const NodeCache = require("node-cache");
+            const object_hash = require("object-hash");
+            const cache = new NodeCache({ useClones:false });
+            //
             var util = require('util');
             var async = require('async');
             var _ = require('underscore');

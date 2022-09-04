@@ -41,6 +41,7 @@ module.exports = async function(context) {
             });
         }
     };
+    const parsedHuman = require('human-ms').parseHuman;
     const parseInputOutput = async function(node,state) {
         //get vars and attrs
         let tmp = { var:'', original:'' };
@@ -258,6 +259,7 @@ module.exports = async function(context) {
                         acceso: '*',
                         params: '',
                         param_doc: {},
+                        cache: '',
                         doc: node.text_note,
                         method: 'get',
                         return: '',
@@ -285,6 +287,8 @@ module.exports = async function(context) {
 
                     } else if (['visible',':visible'].includes(key)) {
                         context.x_state.functions[resp.state.current_func].visible = node.attributes[key];
+                    } else if (['cache',':cache'].includes(key)) {
+                        context.x_state.functions[resp.state.current_func].cache = node.attributes[key];
                     } else {
                         if (key.includes(':')) {
                             context.x_state.functions[resp.state.current_func].param_doc[key.split(':')[0]] = { type:key.split(':')[1], desc:node.attributes[key] };
@@ -998,7 +1002,7 @@ module.exports = async function(context) {
                 let resp = context.reply_template({
                     state
                 });
-                let tmp = { var:node.id+'_', data:{}, model:'', use_var:false };
+                let tmp = { var:node.id+'_', data:{}, model:'', use_var:false, cache:0 };
                 if (node.text.includes(',')) tmp.var=node.text.split(',').splice(-1)[0].trim();
                 tmp.model = context.dsl_parser.findVariables({
                     text: node.text,
@@ -1081,6 +1085,8 @@ module.exports = async function(context) {
                     //
                     } else if (key==':var') {
                         tmp.use_var=true;
+                    } else if (key==':cache') {
+                        tmp.cache = parsedHuman(value)/1000;
                     //order by attr
                     } else if (['order by', '_order by', '_orderby',':orderby',':order by'].includes(key)) {
                         let order = value.split(' ');
@@ -1231,7 +1237,15 @@ module.exports = async function(context) {
                 } else {
                     resp.open += 'let ';
                 }
-                resp.open += `${tmp.var} = await ${tmp.model}.findAll(${data}, { raw:true });\n`;
+                if (tmp.cache!=0) {                    
+                    resp.open += `${tmp.var} = cache.get(object_hash(${data}));\n`;
+                    resp.open += `if (!${tmp.var}) {\n`;
+                    resp.open += `  ${tmp.var} = await ${tmp.model}.findAll(${data}, { raw:true });\n`;
+                    resp.open += `  cache.set(object_hash(${data}),${tmp.var},${tmp.cache});\n`;
+                    resp.open += `}\n`;
+                } else {
+                    resp.open += `${tmp.var} = await ${tmp.model}.findAll(${data}, { raw:true });\n`;
+                }
                 //resp.open += `let ${node.id}_where = ${context.jsDump(tmp.info._where,'Sequelize.')};\n`; //where for modificar/eliminar commands.
                 //console.log('PABLO debug consultar modelo',data);
                 resp.state.meta = tmp.info;
@@ -1692,7 +1706,7 @@ module.exports = async function(context) {
                 let resp = context.reply_template({
                     state
                 });
-                let config = { headers:{} }, data = {}, tmp = { simple:true, method:'get' };
+                let config = { headers:{} }, data = {}, tmp = { simple:true, method:'get', cache:0 };
                 if (node.text.includes(',')) tmp.var=node.text.split(',').splice(-1)[0].trim();
                 // prepare attrs
                 let attrs = aliases2params('def_consultar_web', node, false, 'this.',true);
@@ -1704,7 +1718,11 @@ module.exports = async function(context) {
                     //
                     if (key.charAt(0)==':') {
                         let wd = key.right(key.length-1);
-                        config[wd] = attrs[key];
+                        if (wd=='cache') {
+                            tmp.cache = tmp.cache = parsedHuman(attrs[key])/1000;
+                        } else {
+                            config[wd] = attrs[key];
+                        }
                     } else if (key.length>2 && key.substr(0,3)=='x-:') {
                         config.headers[key.right(key.length-3)] = attrs[key];
                     } else if (key.length>2 && key.substr(0,2)=='x-') {
@@ -1748,10 +1766,23 @@ module.exports = async function(context) {
                 }
                 //delete config.url;
                 //
-                if (tmp.meta) {
-                    resp.open += `const ${tmp.var} = await axios.request(${context.jsDump(config)});\n`;
+                const js_config = context.jsDump(config);
+                if (tmp.cache!=0) {
+                    resp.open += `let ${tmp.var} = cache.get(object_hash(${js_config}));\n`;
+                    resp.open += `if (!${tmp.var}) {\n`;
+                    if (tmp.meta) {
+                        resp.open += `  ${tmp.var} = await axios.request(${js_config});\n`;
+                    } else {
+                        resp.open += `  ${tmp.var} = (await axios.request(${js_config})).data;\n`;
+                    }
+                    resp.open += `  cache.set(object_hash(${js_config}),${tmp.var},${tmp.cache})\n`;
+                    resp.open += `}\n`;
                 } else {
-                    resp.open += `const ${tmp.var} = (await axios.request(${context.jsDump(config)})).data;\n`;
+                    if (tmp.meta) {
+                        resp.open += `const ${tmp.var} = await axios.request(${js_config});\n`;
+                    } else {
+                        resp.open += `const ${tmp.var} = (await axios.request(${js_config})).data;\n`;
+                    }
                 }
                 context.x_state.functions[resp.state.current_func].imports['axios'] = 'axios';
                 //return
