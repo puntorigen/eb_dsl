@@ -258,7 +258,7 @@ export default class eb_dsl extends concepto {
         this.x_state.npm['async']='*';
         this.x_state.npm['body-parser']='*';
         this.x_state.npm['buffer']='*';
-        this.x_state.npm['compare-lat-lon']='*';
+        //this.x_state.npm['compare-lat-lon']='*';
         this.x_state.npm['connect-redis']='*';
         this.x_state.npm['cookie-parser']='*';
         this.x_state.npm['country-tz']='^1.0.0';
